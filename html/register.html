@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TESDA: ACLC Scholarship Portal - Register</title>
+    <link rel="stylesheet" href="../css/register.css">
+</head>
+<body>
+
+    <!-- Save Status Indicator -->
+    <div class="save-status" id="saveStatus">✅ Data saved successfully</div>
+
+    <div class="container">
+        <!-- Left Side: Registration Steps -->
+        <div class="steps-section">
+            <div class="logo">
+                <div class="logo-icon">🎓</div>
+                <div class="logo-text">
+                    <h1>TESDA: ACLC</h1>
+                    <p>Scholarship Portal</p>
+                </div>
+            </div>
+
+            <div class="steps-container">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-info">
+                        <h3>Personal Information</h3>
+                        <p>Tell us about yourself</p>
+                    </div>
+                </div>
+
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-info">
+                        <h3>Program Selection</h3>
+                        <p>Choose your scholarship program</p>
+                    </div>
+                </div>
+
+                <div class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-info">
+                        <h3>Account Setup</h3>
+                        <p>Create login credentials</p>
+                    </div>
+                </div>
+
+                <div class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-info">
+                        <h3>Terms & Agreement</h3>
+                        <p>Review and accept terms</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <!-- Right Side: Registration Form -->
+        <div class="register-section">
+            <div class="register-header">
+                <h2>Create Account</h2>
+                <p>Join the TESDA Scholarship Portal in 4 simple steps</p>
+            </div>
+
+            <!-- Step 1: Personal Information -->
+            <div class="form-container active" id="step1">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName" class="required">First Name</label>
+                        <input type="text" id="firstName" class="form-control" placeholder="Enter your first name">
+                        <div class="error-message" id="firstNameError">First name is required</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="lastName" class="required">Last Name</label>
+                        <input type="text" id="lastName" class="form-control" placeholder="Enter your last name">
+                        <div class="error-message" id="lastNameError">Last name is required</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="required">Email Address</label>
+                    <input type="email" id="email" class="form-control" placeholder="example@email.com">
+                    <div class="error-message" id="emailError">Please enter a valid email address</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="phone" class="required">Phone Number</label>
+                        <input type="tel" id="phone" class="form-control" placeholder="0912 345 6789">
+                        <div class="error-message" id="phoneError">Please enter a valid phone number</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="birthdate" class="required">Date of Birth</label>
+                        <input type="date" id="birthdate" class="form-control">
+                        <div class="error-message" id="birthdateError">You must be at least 16 years old</div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="address" class="required">Address</label>
+                        <input type="text" id="address" class="form-control" placeholder="Street, Barangay, City">
+                        <div class="error-message" id="addressError">Address is required</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender" class="required">Gender</label>
+                        <select id="gender" class="select-control">
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Prefer not to say</option>
+                        </select>
+                        <div class="error-message" id="genderError">Please select your gender</div>
+                    </div>
+                </div>
+
+                <div class="form-navigation">
+                    <div></div>
+                    <button type="button" class="btn btn-next" onclick="nextStep()">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 2: Program Selection -->
+            <div class="form-container" id="step2">
+                <div class="form-group">
+                    <label class="required">Select Scholarship Program</label>
+                    <div class="form-hint">Choose the TESDA program you wish to apply for</div>
+                </div>
+
+                <div class="programs-grid">
+                    <div class="program-card" data-program="wadt">
+                        <div class="program-icon">💻</div>
+                        <div class="program-title">Web Application Development Training (WADT)</div>
+                        <div class="program-desc">Learn full-stack web development, front-end and back-end technologies, and modern frameworks.</div>
+                        <div class="program-details">Duration: 6 months • Required GPA: 2.5</div>
+                    </div>
+
+                    <div class="program-card" data-program="hrt">
+                        <div class="program-icon">🏨</div>
+                        <div class="program-title">Hotel & Restaurant Technology (HRT)</div>
+                        <div class="program-desc">Master hospitality management, customer service, and hotel/restaurant operations.</div>
+                        <div class="program-details">Duration: 6 months • Required GPA: 2.0</div>
+                    </div>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn btn-prev" onclick="prevStep()">Previous</button>
+                    <button type="button" class="btn btn-next" onclick="nextStep()">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Account Setup -->
+            <div class="form-container" id="step3">
+                <div class="form-group">
+                    <label for="username" class="required">Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="Choose a username">
+                    <div class="error-message" id="usernameError">Username must be 3-20 characters</div>
+                    <div class="success-message" id="usernameSuccess">Username available!</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="password" class="required">Password</label>
+                        <input type="password" id="password" class="form-control" placeholder="Create a strong password">
+                        <div class="password-strength">
+                            <div class="strength-bar" id="passwordStrength"></div>
+                        </div>
+                        <div class="error-message" id="passwordError">Password must be at least 8 characters</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirmPassword" class="required">Confirm Password</label>
+                        <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your password">
+                        <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="securityQuestion" class="required">Security Question</label>
+                    <select id="securityQuestion" class="select-control">
+                        <option value="">Select a security question</option>
+                        <option value="pet">What was your first pet's name?</option>
+                        <option value="school">What elementary school did you attend?</option>
+                        <option value="city">In what city were you born?</option>
+                        <option value="mother">What is your mother's maiden name?</option>
+                    </select>
+                    <div class="error-message" id="securityQuestionError">Please select a security question</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="securityAnswer" class="required">Security Answer</label>
+                    <input type="text" id="securityAnswer" class="form-control" placeholder="Your answer">
+                    <div class="error-message" id="securityAnswerError">Security answer is required</div>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn btn-prev" onclick="prevStep()">Previous</button>
+                    <button type="button" class="btn btn-next" onclick="nextStep()">Next Step</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Terms & Agreement -->
+            <div class="form-container" id="step4">
+                <div class="form-group">
+                    <label class="required">Terms and Conditions</label>
+                    <div class="terms-container">
+                        <div class="terms-text">
+                            <h4>TESDA Scholarship Program Agreement</h4>
+                            <p>By registering for the TESDA Scholarship Program, you agree to the following terms:</p>
+                            <ol>
+                                <li>You certify that all information provided is true and accurate.</li>
+                                <li>You commit to completing the full duration of the selected program.</li>
+                                <li>You agree to maintain the required academic performance throughout the program.</li>
+                                <li>You understand that false information may result in disqualification.</li>
+                                <li>You consent to the collection and processing of your personal data for scholarship purposes.</li>
+                                <li>You agree to comply with all TESDA and ACLC College policies and regulations.</li>
+                                <li>You understand that scholarship slots are limited and acceptance is competitive.</li>
+                                <li>You commit to submitting all required documents within the specified deadlines.</li>
+                            </ol>
+                            <p><strong>Important:</strong> Scholarship benefits may include tuition fee coverage, allowance, and training materials as specified in the program guidelines.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="termsAgreement">
+                    <label for="termsAgreement">
+                        I have read and agree to the <a href="#">Terms and Conditions</a> of the TESDA Scholarship Program.
+                    </label>
+                </div>
+                <div class="error-message" id="termsError">You must accept the terms and conditions</div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="privacyAgreement">
+                    <label for="privacyAgreement">
+                        I agree to the collection and processing of my personal data as described in the <a href="#">Privacy Policy</a>.
+                    </label>
+                </div>
+                <div class="error-message" id="privacyError">You must accept the privacy policy</div>
+
+                <!-- XML Download Option (Optional) -->
+                <div class="xml-option">
+                    <h4><span>📁</span> XML Data Export (Optional)</h4>
+                    <p>Your registration data is saved in XML format. You can download it as a backup file if needed.</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn-download secondary" onclick="generateXML()">
+                            <span>🔍</span> Generate XML Preview
+                        </button>
+                        <button type="button" class="btn-download" onclick="downloadXML()" id="downloadXmlBtn" disabled>
+                            <span>📥</span> Download XML File
+                        </button>
+                    </div>
+                    <div id="xmlPreview" style="display: none; margin-top: 15px;">
+                        <pre style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px; max-height: 200px; overflow: auto;"></pre>
+                    </div>
+                </div>
+
+                <div class="form-navigation">
+                    <button type="button" class="btn btn-prev" onclick="prevStep()">Previous</button>
+                    <button type="button" class="btn btn-submit" onclick="submitForm()">Create Account</button>
+                </div>
+            </div>
+
+            <div class="login-link">
+                <p>Already have an account? <a href="login.html">Sign in here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/register.js"></script>
+    
+</body>
+</html>
