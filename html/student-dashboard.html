@@ -1,0 +1,2522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TESDA: ACLC - Student Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary-blue: #1e3c72;
+            --secondary-blue: #2a5298;
+            --accent-blue: #4fc3f7;
+            --light-blue: #f0f5ff;
+            --dark-gray: #333;
+            --medium-gray: #666;
+            --light-gray: #f8f9fa;
+            --white: #ffffff;
+            --success: #2e7d32;
+            --warning: #ff9800;
+            --danger: #e53935;
+            --sidebar-width: 250px;
+        }
+
+        body {
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        /* Top Header */
+        .dashboard-header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+            color: var(--dark-gray);
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            color: var(--primary-blue);
+        }
+
+        .logo-text h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--primary-blue);
+        }
+
+        .logo-text span {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-details {
+            text-align: right;
+        }
+
+        .user-details h3 {
+            color: var(--primary-blue);
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .user-details p {
+            color: var(--medium-gray);
+            font-size: 13px;
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .logout-btn {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            border: 1px solid var(--primary-blue);
+            padding: 8px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        /* Main Layout */
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            gap: 30px;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar h3 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--light-blue);
+            font-size: 18px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 10px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 15px;
+            color: var(--dark-gray);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .sidebar-nav a:hover {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+        }
+
+        .sidebar-nav a.active {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            min-height: 600px;
+        }
+
+        .content-header {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--light-blue);
+        }
+
+        .content-header h1 {
+            color: var(--primary-blue);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .content-header p {
+            color: var(--medium-gray);
+            font-size: 16px;
+        }
+
+        /* Dashboard Overview */
+        .welcome-banner {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .welcome-banner h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .welcome-banner p {
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border: 2px solid var(--light-blue);
+            transition: all 0.3s;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-card h3 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .status-approved { color: var(--success); }
+        .status-pending { color: var(--warning); }
+        .status-rejected { color: var(--danger); }
+        .status-not-started { color: var(--medium-gray); }
+        .status-in-progress { color: #1976d2; }
+
+        .status-description {
+            color: var(--medium-gray);
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        /* Application Progress */
+        .progress-container {
+            margin-top: 40px;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin: 40px 0;
+        }
+
+        .progress-steps:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--light-blue);
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 4px;
+            background: var(--primary-blue);
+            transform: translateY(-50%);
+            z-index: 2;
+            transition: width 0.5s;
+        }
+
+        .step {
+            position: relative;
+            z-index: 3;
+            text-align: center;
+            width: 80px;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            background: white;
+            border: 4px solid var(--light-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--medium-gray);
+            transition: all 0.3s;
+        }
+
+        .step.active .step-number {
+            border-color: var(--primary-blue);
+            background: var(--primary-blue);
+            color: white;
+        }
+
+        .step.completed .step-number {
+            border-color: var(--success);
+            background: var(--success);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 14px;
+            color: var(--medium-gray);
+            font-weight: 500;
+        }
+
+        .step.active .step-label {
+            color: var(--primary-blue);
+            font-weight: 600;
+        }
+
+        /* Program Selection */
+        .programs-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .program-card {
+            border: 3px solid #e1e5ee;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .program-card:hover {
+            border-color: var(--primary-blue);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(30, 60, 114, 0.15);
+        }
+
+        .program-card.selected {
+            border-color: var(--primary-blue);
+            background: var(--light-blue);
+        }
+
+        .program-card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .program-card.disabled:hover {
+            transform: none;
+            border-color: #e1e5ee;
+            box-shadow: none;
+        }
+
+        .program-header {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: white;
+            padding: 20px;
+        }
+
+        .program-header h3 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .program-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .program-content {
+            padding: 25px;
+        }
+
+        .program-features {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .program-features li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .program-features li:last-child {
+            border-bottom: none;
+        }
+
+        .program-requirements {
+            background: var(--light-blue);
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .program-requirements h4 {
+            color: var(--primary-blue);
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 16px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary:disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Document Upload */
+        .upload-section {
+            margin-top: 30px;
+        }
+
+        .documents-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .document-card {
+            background: white;
+            border: 2px solid #e1e5ee;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .document-card.uploaded {
+            border-color: var(--success);
+            background: rgba(46, 125, 50, 0.05);
+        }
+
+        .document-card.required {
+            border-color: var(--warning);
+        }
+
+        .document-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .document-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            color: var(--dark-gray);
+        }
+
+        .document-status {
+            font-size: 12px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fff3e0; color: #ef6c00; }
+        .status-uploaded { background: #e8f5e9; color: var(--success); }
+        .status-verified { background: #e3f2fd; color: var(--primary-blue); }
+        .status-required { background: #ffebee; color: var(--danger); }
+
+        .upload-area {
+            border: 2px dashed #e1e5ee;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-blue);
+            background: var(--light-blue);
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            color: var(--medium-gray);
+            margin-bottom: 15px;
+        }
+
+        .upload-text h4 {
+            color: var(--dark-gray);
+            margin-bottom: 8px;
+        }
+
+        .upload-text p {
+            color: var(--medium-gray);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .file-preview {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--light-blue);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: var(--dark-gray);
+        }
+
+        .file-size {
+            font-size: 12px;
+            color: var(--medium-gray);
+        }
+
+        .btn-remove {
+            background: #ffebee;
+            color: var(--danger);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Online Exam Section */
+        .exam-section {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .exam-card {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border: 3px solid var(--light-blue);
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .exam-icon {
+            font-size: 60px;
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+        }
+
+        .exam-card h2 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+
+        .exam-card p {
+            color: var(--medium-gray);
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        .exam-details {
+            background: var(--light-blue);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .exam-details h4 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+
+        .exam-details ul {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .exam-details li {
+            padding: 8px 0;
+            color: var(--medium-gray);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-start-exam {
+            background: linear-gradient(135deg, var(--success) 0%, #4caf50 100%);
+            color: white;
+            font-size: 18px;
+            padding: 15px 40px;
+        }
+
+        .btn-start-exam:hover {
+            background: linear-gradient(135deg, #4caf50 0%, var(--success) 100%);
+        }
+
+        .btn-start-exam:disabled {
+            background: #cccccc;
+        }
+
+        /* Application Status */
+        .application-details {
+            margin-top: 30px;
+        }
+
+        .detail-card {
+            background: white;
+            border: 2px solid var(--light-blue);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .detail-card h3 {
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .detail-row {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 20px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--dark-gray);
+        }
+
+        .detail-value {
+            color: var(--medium-gray);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .badge-pending { background: #fff3e0; color: #ef6c00; }
+        .badge-under-review { background: #e3f2fd; color: var(--primary-blue); }
+        .badge-approved { background: #e8f5e9; color: var(--success); }
+        .badge-rejected { background: #ffebee; color: var(--danger); }
+        .badge-in-progress { background: #e3f2fd; color: #1976d2; }
+
+        .timeline {
+            margin-top: 30px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 20px;
+            padding: 20px 0;
+            border-left: 3px solid var(--light-blue);
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .timeline-item:before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 25px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--light-blue);
+        }
+
+        .timeline-item.completed:before {
+            background: var(--success);
+        }
+
+        .timeline-item.current:before {
+            background: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.2);
+        }
+
+        .timeline-date {
+            color: var(--medium-gray);
+            font-size: 14px;
+            min-width: 100px;
+        }
+
+        .timeline-content h4 {
+            color: var(--dark-gray);
+            margin-bottom: 5px;
+        }
+
+        .timeline-content p {
+            color: var(--medium-gray);
+            font-size: 14px;
+        }
+
+        /* Profile Update Section */
+        .profile-section {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .profile-form {
+            margin-top: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--dark-gray);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .form-group label.required:after {
+            content: " *";
+            color: var(--danger);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5ee;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--medium-gray);
+            margin-top: 5px;
+            display: block;
+        }
+
+        .password-strength {
+            height: 4px;
+            background: #e1e5ee;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .strength-weak { background: #e53935; width: 25%; }
+        .strength-fair { background: #ff9800; width: 50%; }
+        .strength-good { background: #ffb300; width: 75%; }
+        .strength-strong { background: #43a047; width: 100%; }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            color: var(--success);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .current-password-info {
+            background: var(--light-blue);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-blue);
+        }
+
+        .current-password-info h4 {
+            color: var(--primary-blue);
+            margin-bottom: 5px;
+        }
+
+        .current-password-info p {
+            color: var(--medium-gray);
+            font-size: 14px;
+        }
+
+        /* Notifications */
+        .notification-badge {
+            background: var(--danger);
+            color: white;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 10px;
+        }
+
+        /* Confirmation Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: var(--primary-blue);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .modal-body {
+            margin-bottom: 25px;
+        }
+
+        .modal-body p {
+            color: var(--medium-gray);
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .btn-cancel {
+            background: #f8f9fa;
+            color: var(--dark-gray);
+            border: 2px solid #e1e5ee;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover {
+            background: #e9ecef;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, var(--success) 0%, #4caf50 100%);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, #4caf50 0%, var(--success) 100%);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                position: static;
+                top: auto;
+            }
+            
+            .progress-steps {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 30px;
+            }
+            
+            .step {
+                width: 100px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .user-info {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .user-details {
+                text-align: center;
+            }
+            
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .programs-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .detail-row {
+                grid-template-columns: 1fr;
+                gap: 5px;
+            }
+            
+            .modal-actions {
+                flex-direction: column;
+            }
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--light-blue);
+            border-top-color: var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dashboard Header -->
+    <header class="dashboard-header">
+        <div class="header-container">
+            <a href="index.html" class="logo">
+                <div class="logo-icon">🎓</div>
+                <div class="logo-text">
+                    <h2>TESDA: ACLC</h2>
+                    <span>Student Dashboard</span>
+                </div>
+            </a>
+            
+            <div class="user-info">
+                <div class="user-details">
+                    <h3 id="userName">Loading...</h3>
+                    <p id="userEmail">student@example.com</p>
+                </div>
+                <div class="user-avatar" id="userAvatar">S</div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Content -->
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <h3>Navigation</h3>
+            <ul class="sidebar-nav">
+                <li>
+                    <a href="#" class="active" onclick="showSection('overview')">
+                        <span>📊</span> Dashboard Overview
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('apply')" id="applyLink">
+                        <span>📝</span> Apply for Scholarship
+                        <span class="notification-badge" id="applyNotification" style="display: none;">!</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('documents')" id="documentsLink">
+                        <span>📄</span> Upload Documents
+                        <span class="notification-badge" id="documentsNotification" style="display: none;">!</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('exam')" id="examLink">
+                        <span>💻</span> Take Online Exam
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('status')" id="statusLink">
+                        <span>📊</span> Application Status
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSection('profile')" id="profileLink">
+                        <span>⚙️</span> Update Profile
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Dashboard Overview -->
+            <div id="overviewSection" class="content-section">
+                <div class="content-header">
+                    <h1>Dashboard Overview</h1>
+                    <p>Welcome to your scholarship application portal</p>
+                </div>
+
+                <div class="welcome-banner">
+                    <h2 id="welcomeMessage">Hello, Student!</h2>
+                    <p>Track your scholarship application progress and complete the required steps</p>
+                </div>
+
+                <!-- Application Progress -->
+                <div class="progress-container">
+                    <h3>Application Progress</h3>
+                    <div class="progress-steps" id="progressSteps">
+                        <div class="step" id="step1">
+                            <div class="step-number">1</div>
+                            <div class="step-label">Apply</div>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-number">2</div>
+                            <div class="step-label">Upload Docs</div>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-number">3</div>
+                            <div class="step-label">Take Exam</div>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-number">4</div>
+                            <div class="step-label">Complete</div>
+                        </div>
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+
+                <!-- Status Cards -->
+                <div class="status-grid">
+                    <div class="status-card">
+                        <h3><span>📝</span> Application Status</h3>
+                        <div class="status-value status-not-started" id="applicationStatusText">Not Started</div>
+                        <div class="status-description" id="applicationStatusDesc">You haven't started your application</div>
+                    </div>
+
+                    <div class="status-card">
+                        <h3><span>📄</span> Documents</h3>
+                        <div class="status-value status-not-started" id="documentsStatusText">0/6</div>
+                        <div class="status-description" id="documentsStatusDesc">No documents uploaded yet</div>
+                    </div>
+
+                    <div class="status-card">
+                        <h3><span>💯</span> Exam Score</h3>
+                        <div class="status-value status-not-started" id="examStatusText">--</div>
+                        <div class="status-description" id="examStatusDesc">Exam not taken yet</div>
+                    </div>
+
+                    <div class="status-card">
+                        <h3><span>📅</span> Last Updated</h3>
+                        <div class="status-value" id="lastUpdatedText">--</div>
+                        <div class="status-description" id="lastUpdatedDesc">No updates yet</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apply for Scholarship -->
+            <div id="applySection" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1>Apply for Scholarship</h1>
+                    <p>Select your preferred TESDA program</p>
+                </div>
+
+                <div class="programs-container" id="programsContainer">
+                    <!-- Programs will be loaded here -->
+                </div>
+
+                <div id="applicationForm" style="display: none; margin-top: 40px;">
+                    <h3>Application Form</h3>
+                    <div id="selectedProgramInfo"></div>
+                    
+                    <div style="background: var(--light-blue); padding: 20px; border-radius: 10px; margin: 20px 0;">
+                        <h4>Important Notes:</h4>
+                        <ul style="padding-left: 20px;">
+                            <li>You can only apply for ONE scholarship program</li>
+                            <li>Once submitted, you cannot change your program selection</li>
+                            <li>Make sure you meet all requirements before applying</li>
+                            <li>You will need to upload required documents after applying</li>
+                        </ul>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="showConfirmationModal()" id="submitApplicationBtn">
+                        Submit Application
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upload Documents -->
+            <div id="documentsSection" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1>Upload Required Documents</h1>
+                    <p>Please upload all required documents in the specified order</p>
+                </div>
+
+                <div class="upload-section">
+                    <p>All documents must be in PDF, JPG, or PNG format. Maximum file size: 5MB</p>
+                    <p style="color: var(--warning); font-weight: 500; margin-top: 10px;">
+                        ⚠️ Please upload documents in this order: 1. 2x2 ID → 2. Birth Certificate → 3. Report Card → 4. Good Moral → 5. TOR → 6. Diploma
+                    </p>
+                    
+                    <div class="documents-list" id="documentsList">
+                        <!-- Documents will be loaded here -->
+                    </div>
+
+                    <div style="text-align: center; margin-top: 40px;">
+                        <button class="btn btn-primary" onclick="checkDocumentsCompletion()" id="submitDocumentsBtn">
+                            Submit All Documents
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Take Online Exam -->
+            <div id="examSection" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1>Online Qualification Exam</h1>
+                    <p>Take the exam for your selected program</p>
+                </div>
+
+                <div class="exam-section">
+                    <div class="exam-card">
+                        <div class="exam-icon">📝</div>
+                        <h2 id="examProgramTitle">Program Exam</h2>
+                        <p id="examDescription">Take the qualification exam for your selected scholarship program. The exam will test your basic knowledge and aptitude.</p>
+                        
+                        <div class="exam-details">
+                            <h4>Exam Details:</h4>
+                            <ul>
+                                <li>✅ 50 multiple choice questions</li>
+                                <li>⏱️ 60 minutes time limit</li>
+                                <li>📝 Covers basic knowledge and aptitude</li>
+                                <li>💯 Passing score: 75% and above</li>
+                                <li>🔄 You can only take the exam once</li>
+                                <li>📊 Instant results after submission</li>
+                            </ul>
+                        </div>
+
+                        <div id="examStatusInfo" style="margin: 20px 0; padding: 15px; border-radius: 8px; background: #f5f5f5;">
+                            <!-- Exam status will be shown here -->
+                        </div>
+
+                        <button class="btn btn-primary btn-start-exam" onclick="startExam()" id="startExamBtn">
+                            Start Exam Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Application Status -->
+            <div id="statusSection" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1>Application Status</h1>
+                    <p>Track your scholarship application progress</p>
+                </div>
+
+                <div class="application-details">
+                    <div class="detail-card">
+                        <h3><span>📋</span> Application Information</h3>
+                        <div class="detail-row">
+                            <div class="detail-label">Application ID:</div>
+                            <div class="detail-value" id="statusApplicationId">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Program:</div>
+                            <div class="detail-value" id="statusProgram">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Status:</div>
+                            <div class="detail-value">
+                                <span class="status-badge badge-pending" id="statusBadge">Not Started</span>
+                            </div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Date Applied:</div>
+                            <div class="detail-value" id="statusDateApplied">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Last Updated:</div>
+                            <div class="detail-value" id="statusLastUpdated">--</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-card">
+                        <h3><span>📄</span> Documents Status</h3>
+                        <div id="statusDocumentsList">
+                            <!-- Documents status will be shown here -->
+                        </div>
+                    </div>
+
+                    <div class="detail-card">
+                        <h3><span>💯</span> Exam Results</h3>
+                        <div class="detail-row">
+                            <div class="detail-label">Exam Status:</div>
+                            <div class="detail-value" id="examResultStatus">Not Taken</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Score:</div>
+                            <div class="detail-value" id="examScore">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Result:</div>
+                            <div class="detail-value" id="examResult">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Date Taken:</div>
+                            <div class="detail-value" id="examDate">--</div>
+                        </div>
+                    </div>
+
+                    <div class="timeline">
+                        <h3><span>📅</span> Application Timeline</h3>
+                        <div id="applicationTimeline">
+                            <!-- Timeline will be shown here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Profile -->
+            <div id="profileSection" class="content-section" style="display: none;">
+                <div class="content-header">
+                    <h1>Update Profile</h1>
+                    <p>Manage your account settings and security</p>
+                </div>
+
+                <div class="profile-section">
+                    <div class="current-password-info">
+                        <h4>Password Update Information</h4>
+                        <p>You can change your password here. After changing your password, you must use the new password for your next login.</p>
+                    </div>
+
+                    <div class="profile-form">
+                        <div class="form-group">
+                            <label for="currentPassword" class="required">Current Password</label>
+                            <input type="password" id="currentPassword" class="form-control" placeholder="Enter your current password">
+                            <div class="error-message" id="currentPasswordError">Current password is required</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPassword" class="required">New Password</label>
+                            <input type="password" id="newPassword" class="form-control" placeholder="Enter your new password">
+                            <div class="password-strength">
+                                <div class="strength-bar" id="passwordStrength"></div>
+                            </div>
+                            <div class="form-hint">Must be at least 8 characters with uppercase, lowercase, and numbers</div>
+                            <div class="error-message" id="newPasswordError">New password must be at least 8 characters</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPassword" class="required">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your new password">
+                            <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
+                            <div class="success-message" id="passwordMatchSuccess">Passwords match ✓</div>
+                        </div>
+
+                        <div style="margin-top: 40px;">
+                            <button class="btn btn-primary" onclick="updatePassword()" id="updatePasswordBtn">
+                                Update Password
+                            </button>
+                            <button class="btn" onclick="showSection('overview')" style="margin-left: 15px; background: #f8f9fa; color: var(--dark-gray); border: 2px solid #e1e5ee;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirmationModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Confirm Application</h3>
+            </div>
+            <div class="modal-body">
+                <p>You are about to apply for the <strong id="modalProgramName">[Program Name]</strong> scholarship program.</p>
+                <p><strong>Important:</strong> Once submitted, you cannot change your program selection.</p>
+                <p>Please make sure you meet all requirements before proceeding.</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="hideConfirmationModal()">Cancel</button>
+                <button class="btn-confirm" onclick="confirmApplication()">Confirm & Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== GLOBAL VARIABLES =====
+        let currentUser = null;
+        let userApplication = null;
+        let currentSection = 'overview';
+
+        // ===== INITIALIZATION =====
+        window.addEventListener('DOMContentLoaded', function() {
+            checkLoginStatus();
+            loadUserData();
+            updateDashboard();
+            setupEventListeners();
+        });
+
+        function checkLoginStatus() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const username = sessionStorage.getItem('username');
+            const userType = sessionStorage.getItem('userType');
+
+            if (isLoggedIn !== 'true' || userType !== 'student') {
+                alert('Please login as a student to access the dashboard.');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Load user data from localStorage
+            const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            currentUser = users.find(u => u.account?.username === username);
+            
+            if (!currentUser) {
+                alert('User not found. Please register first.');
+                window.location.href = 'register.html';
+                return;
+            }
+
+            // Load or create application data
+            loadOrCreateApplication();
+        }
+
+        function loadOrCreateApplication() {
+            if (!currentUser.applications) {
+                currentUser.applications = [];
+            }
+
+            // Get active application (if any)
+            userApplication = currentUser.applications.find(app => app.status !== 'cancelled');
+            
+            // If no active application, create one with default values
+            if (!userApplication && currentUser.applications.length === 0) {
+                userApplication = {
+                    applicationId: generateApplicationId(),
+                    program: null,
+                    status: 'not-started',
+                    submittedDate: null,
+                    documents: {
+                        picture: { uploaded: false, filename: null, verified: false, type: '2x2 ID Picture' },
+                        birthcert: { uploaded: false, filename: null, verified: false, type: 'Birth Certificate' },
+                        reportcard: { uploaded: false, filename: null, verified: false, type: 'Report Card' },
+                        goodmoral: { uploaded: false, filename: null, verified: false, type: 'Certificate of Good Moral Character' },
+                        tor: { uploaded: false, filename: null, verified: false, type: 'Transcript of Records (TOR)' },
+                        diploma: { uploaded: false, filename: null, verified: false, type: 'High School Diploma' }
+                    },
+                    exam: {
+                        taken: false,
+                        score: null,
+                        passed: false,
+                        dateTaken: null,
+                        maxScore: 100,
+                        passingScore: 75
+                    },
+                    timeline: [],
+                    adminReview: {
+                        reviewDate: null,
+                        reviewer: null,
+                        notes: '',
+                        decision: null // 'accepted' or 'rejected'
+                    }
+                };
+                
+                currentUser.applications.push(userApplication);
+                saveUserData();
+            }
+        }
+
+        function generateApplicationId() {
+            return 'APP-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+        }
+
+        function loadUserData() {
+            // Update user info in header
+            document.getElementById('userName').textContent = 
+                `${currentUser.personal.firstName} ${currentUser.personal.lastName}`;
+            document.getElementById('userEmail').textContent = currentUser.personal.email;
+            
+            // Set avatar with first letter of first name
+            const firstLetter = currentUser.personal.firstName.charAt(0).toUpperCase();
+            document.getElementById('userAvatar').textContent = firstLetter;
+            
+            // Update welcome message
+            document.getElementById('welcomeMessage').textContent = 
+                `Hello, ${currentUser.personal.firstName}!`;
+        }
+
+        function updateDashboard() {
+            updateProgressBar();
+            updateStatusCards();
+            updateNavigation();
+            
+            // Load appropriate content based on current section
+            showSection(currentSection);
+        }
+
+        function updateProgressBar() {
+            if (!userApplication) return;
+
+            const steps = ['step1', 'step2', 'step3', 'step4'];
+            const progressBar = document.getElementById('progressBar');
+            
+            // Reset all steps
+            steps.forEach(stepId => {
+                const step = document.getElementById(stepId);
+                step.classList.remove('active', 'completed');
+            });
+
+            // Determine current step
+            let currentStep = 0;
+            let progressWidth = '0%';
+
+            if (userApplication.status === 'not-started') {
+                currentStep = 0;
+                progressWidth = '0%';
+            } else if (userApplication.program) {
+                currentStep = 1;
+                progressWidth = '25%';
+                document.getElementById('step1').classList.add('completed');
+                document.getElementById('step2').classList.add('active');
+                
+                // Check if documents are uploaded
+                if (allDocumentsUploaded()) {
+                    currentStep = 2;
+                    progressWidth = '50%';
+                    document.getElementById('step2').classList.add('completed');
+                    document.getElementById('step3').classList.add('active');
+                }
+                
+                // Check if exam is taken
+                if (userApplication.exam.taken) {
+                    currentStep = 3;
+                    progressWidth = '75%';
+                    document.getElementById('step3').classList.add('completed');
+                    document.getElementById('step4').classList.add('active');
+                }
+                
+                // Check if application is complete and pending
+                if (userApplication.status === 'pending') {
+                    currentStep = 4;
+                    progressWidth = '100%';
+                    document.getElementById('step4').classList.add('completed');
+                }
+            }
+
+            progressBar.style.width = progressWidth;
+        }
+
+        function updateStatusCards() {
+            if (!userApplication) return;
+
+            // Application Status
+            const statusText = document.getElementById('applicationStatusText');
+            const statusDesc = document.getElementById('applicationStatusDesc');
+            
+            switch(userApplication.status) {
+                case 'not-started':
+                    statusText.textContent = 'Not Started';
+                    statusText.className = 'status-value status-not-started';
+                    statusDesc.textContent = 'You haven\'t started your application';
+                    break;
+                case 'applied':
+                    statusText.textContent = 'Applied';
+                    statusText.className = 'status-value status-in-progress';
+                    statusDesc.textContent = 'Program selected, complete remaining steps';
+                    break;
+                case 'documents-completed':
+                    statusText.textContent = 'Documents Done';
+                    statusText.className = 'status-value status-in-progress';
+                    statusDesc.textContent = 'Documents uploaded, take exam next';
+                    break;
+                case 'exam-completed':
+                    statusText.textContent = 'Exam Done';
+                    statusText.className = 'status-value status-in-progress';
+                    statusDesc.textContent = 'Exam completed, finalizing application';
+                    break;
+                case 'pending':
+                    statusText.textContent = 'Pending Review';
+                    statusText.className = 'status-value status-pending';
+                    statusDesc.textContent = 'Application submitted for admin review';
+                    break;
+                case 'under-review':
+                    statusText.textContent = 'Under Review';
+                    statusText.className = 'status-value status-pending';
+                    statusDesc.textContent = 'Your application is being reviewed';
+                    break;
+                case 'accepted':
+                    statusText.textContent = 'Accepted ✓';
+                    statusText.className = 'status-value status-approved';
+                    statusDesc.textContent = 'Congratulations! Your application is accepted';
+                    break;
+                case 'rejected':
+                    statusText.textContent = 'Rejected';
+                    statusText.className = 'status-value status-rejected';
+                    statusDesc.textContent = 'Application not accepted';
+                    break;
+            }
+
+            // Documents Status
+            if (userApplication.documents) {
+                const docs = userApplication.documents;
+                const uploadedDocs = Object.values(docs).filter(doc => doc.uploaded).length;
+                const totalDocs = Object.keys(docs).length;
+                
+                document.getElementById('documentsStatusText').textContent = `${uploadedDocs}/${totalDocs}`;
+                document.getElementById('documentsStatusDesc').textContent = 
+                    uploadedDocs === totalDocs ? 'All documents uploaded' : `${totalDocs - uploadedDocs} documents remaining`;
+                
+                if (uploadedDocs === 0) {
+                    document.getElementById('documentsStatusText').className = 'status-value status-not-started';
+                } else if (uploadedDocs === totalDocs) {
+                    document.getElementById('documentsStatusText').className = 'status-value status-approved';
+                } else {
+                    document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
+                }
+            }
+
+            // Exam Status
+            const examText = document.getElementById('examStatusText');
+            const examDesc = document.getElementById('examStatusDesc');
+            
+            if (userApplication.exam.taken) {
+                examText.textContent = `${userApplication.exam.score}%`;
+                examDesc.textContent = userApplication.exam.passed ? 'Passed ✓' : 'Not passed';
+                examText.className = userApplication.exam.passed ? 
+                    'status-value status-approved' : 'status-value status-rejected';
+            } else {
+                examText.textContent = '--';
+                examDesc.textContent = 'Exam not taken yet';
+                examText.className = 'status-value status-not-started';
+            }
+
+            // Last Updated
+            const now = new Date();
+            document.getElementById('lastUpdatedText').textContent = 
+                now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            document.getElementById('lastUpdatedDesc').textContent = 
+                'Today at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function updateNavigation() {
+            // Show notifications based on application status
+            const applyNotification = document.getElementById('applyNotification');
+            const documentsNotification = document.getElementById('documentsNotification');
+            
+            // Remove notifications from exam and status links (as requested)
+            document.getElementById('examLink').querySelector('.notification-badge')?.remove();
+            document.getElementById('statusLink').querySelector('.notification-badge')?.remove();
+
+            if (userApplication.status === 'not-started') {
+                applyNotification.style.display = 'inline-block';
+            } else if (userApplication.program && !allDocumentsUploaded()) {
+                documentsNotification.style.display = 'inline-block';
+            } else {
+                // Hide all notifications when application is complete
+                applyNotification.style.display = 'none';
+                documentsNotification.style.display = 'none';
+            }
+        }
+
+        // ===== SECTION MANAGEMENT =====
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Remove active class from all nav links
+            document.querySelectorAll('.sidebar-nav a').forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // Show selected section
+            document.getElementById(sectionId + 'Section').style.display = 'block';
+            
+            // Add active class to clicked nav link
+            document.querySelector(`[onclick="showSection('${sectionId}')"]`).classList.add('active');
+
+            // Update current section
+            currentSection = sectionId;
+
+            // Load section-specific content
+            switch(sectionId) {
+                case 'apply':
+                    loadProgramsSection();
+                    break;
+                case 'documents':
+                    loadDocumentsSection();
+                    break;
+                case 'exam':
+                    loadExamSection();
+                    break;
+                case 'status':
+                    loadStatusSection();
+                    break;
+                case 'profile':
+                    loadProfileSection();
+                    break;
+            }
+        }
+
+        // ===== APPLY SECTION =====
+        function loadProgramsSection() {
+            const programsContainer = document.getElementById('programsContainer');
+            const applicationForm = document.getElementById('applicationForm');
+            
+            // Clear existing content
+            programsContainer.innerHTML = '';
+            
+            // Check if user already has an application
+            if (userApplication && userApplication.program) {
+                // User already applied, show current application
+                programsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: var(--light-blue); border-radius: 15px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Application Submitted</h3>
+                        <p>You have already applied for the <strong>${getProgramName(userApplication.program)}</strong> program.</p>
+                        <p style="margin-top: 10px; color: var(--medium-gray);">You cannot apply for another program.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('status')">
+                            View Application Status
+                        </button>
+                    </div>
+                `;
+                applicationForm.style.display = 'none';
+                return;
+            }
+
+            // User hasn't applied yet, show program options
+            const programs = [
+                {
+                    id: 'wadt',
+                    name: 'Web Application Development Training (WADT)',
+                    description: 'Full-stack web development program',
+                    icon: '💻',
+                    duration: '6 months',
+                    requirements: ['High School Graduate', 'Basic Computer Literacy', 'Passion for Technology']
+                },
+                {
+                    id: 'hrt',
+                    name: 'Hotel & Restaurant Technology (HRT)',
+                    description: 'Hospitality management program',
+                    icon: '🏨',
+                    duration: '6 months',
+                    requirements: ['High School Graduate', 'Good Communication Skills', 'Interest in Hospitality']
+                }
+            ];
+
+            programs.forEach(program => {
+                const programCard = document.createElement('div');
+                programCard.className = 'program-card';
+                programCard.innerHTML = `
+                    <div class="program-header">
+                        <h3>${program.name}</h3>
+                        <p>${program.description}</p>
+                    </div>
+                    <div class="program-content">
+                        <ul class="program-features">
+                            <li>✅ Duration: ${program.duration}</li>
+                            <li>✅ Hands-on training</li>
+                            <li>✅ Industry certification</li>
+                            <li>✅ Job placement assistance</li>
+                        </ul>
+                        <div class="program-requirements">
+                            <h4>Requirements:</h4>
+                            ${program.requirements.map(req => `<p>• ${req}</p>`).join('')}
+                        </div>
+                        <button class="btn btn-primary" onclick="selectProgram('${program.id}')">
+                            Select ${program.name.split(' ')[0]}
+                        </button>
+                    </div>
+                `;
+                programsContainer.appendChild(programCard);
+            });
+
+            applicationForm.style.display = 'none';
+        }
+
+        function selectProgram(programId) {
+            userApplication.program = programId;
+            userApplication.status = 'applied';
+            
+            saveUserData();
+            updateDashboard();
+            
+            // Show application form
+            document.getElementById('applicationForm').style.display = 'block';
+            document.getElementById('selectedProgramInfo').innerHTML = `
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Selected Program: ${getProgramName(programId)}</h4>
+                    <p>Please review your selection and submit your application.</p>
+                </div>
+            `;
+            
+            // Scroll to form
+            document.getElementById('applicationForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showConfirmationModal() {
+            if (!userApplication.program) {
+                alert('Please select a program first.');
+                return;
+            }
+
+            // Set program name in modal
+            document.getElementById('modalProgramName').textContent = getProgramName(userApplication.program);
+            
+            // Show modal
+            document.getElementById('confirmationModal').style.display = 'flex';
+        }
+
+        function hideConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+        }
+
+        function confirmApplication() {
+            // Update application status
+            userApplication.status = 'applied';
+            userApplication.submittedDate = new Date().toISOString();
+            
+            // Add to timeline
+            addTimelineEvent('Application submitted');
+            
+            saveUserData();
+            updateDashboard();
+            
+            // Hide modal
+            hideConfirmationModal();
+            
+            // Show success message
+            alert('Application submitted successfully! Please proceed to upload your documents.');
+            
+            // Switch to documents section
+            showSection('documents');
+        }
+
+        // ===== DOCUMENTS SECTION =====
+        function loadDocumentsSection() {
+            if (!userApplication || !userApplication.program) {
+                document.getElementById('documentsSection').innerHTML = `
+                    <div class="content-header">
+                        <h1>Upload Required Documents</h1>
+                        <p>Please apply for a program first</p>
+                    </div>
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">No Application Found</h3>
+                        <p>You need to apply for a scholarship program first before uploading documents.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('apply')">
+                            Apply for Program
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            const documentsList = document.getElementById('documentsList');
+            documentsList.innerHTML = '';
+
+            // Define documents in the specified order
+            const documents = [
+                {
+                    id: 'picture',
+                    name: '2x2 ID Picture',
+                    description: 'Recent passport-sized photo with white background',
+                    required: true,
+                    accept: 'image/*'
+                },
+                {
+                    id: 'birthcert',
+                    name: 'Birth Certificate',
+                    description: 'PSA/NSO issued birth certificate',
+                    required: true,
+                    accept: '.pdf,.jpg,.jpeg,.png'
+                },
+                {
+                    id: 'reportcard',
+                    name: 'Report Card',
+                    description: 'Latest report card (Form 138)',
+                    required: true,
+                    accept: '.pdf,.jpg,.jpeg,.png'
+                },
+                {
+                    id: 'goodmoral',
+                    name: 'Certificate of Good Moral Character',
+                    description: 'Issued by your previous school',
+                    required: true,
+                    accept: '.pdf,.jpg,.jpeg,.png'
+                },
+                {
+                    id: 'tor',
+                    name: 'Transcript of Records (TOR)',
+                    description: 'Official transcript from your previous school',
+                    required: true,
+                    accept: '.pdf,.jpg,.jpeg,.png'
+                },
+                {
+                    id: 'diploma',
+                    name: 'High School Diploma',
+                    description: 'Copy of your high school diploma',
+                    required: true,
+                    accept: '.pdf,.jpg,.jpeg,.png'
+                }
+            ];
+
+            documents.forEach(doc => {
+                const docData = userApplication.documents[doc.id];
+                const isUploaded = docData && docData.uploaded;
+                
+                const documentCard = document.createElement('div');
+                documentCard.className = `document-card ${isUploaded ? 'uploaded' : doc.required ? 'required' : ''}`;
+                documentCard.innerHTML = `
+                    <div class="document-header">
+                        <div class="document-title">
+                            <span>${isUploaded ? '✅' : '📄'}</span>
+                            ${doc.name}
+                        </div>
+                        <div class="document-status ${isUploaded ? 'status-uploaded' : 'status-required'}">
+                            ${isUploaded ? 'Uploaded' : 'Required'}
+                        </div>
+                    </div>
+                    
+                    <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 15px;">${doc.description}</p>
+                    
+                    <div class="upload-area" onclick="document.getElementById('fileInput_${doc.id}').click()">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">
+                            <h4>${isUploaded ? 'Change File' : 'Upload File'}</h4>
+                            <p>Click to upload or drag and drop</p>
+                            <p style="font-size: 12px;">Max file size: 5MB • ${doc.accept}</p>
+                        </div>
+                    </div>
+                    
+                    <input type="file" id="fileInput_${doc.id}" style="display: none;" 
+                           accept="${doc.accept}" onchange="handleFileUpload('${doc.id}', this)">
+                    
+                    ${isUploaded ? `
+                    <div class="file-preview">
+                        <div class="file-info">
+                            <span>📎</span>
+                            <div>
+                                <div class="file-name">${docData.filename}</div>
+                                <div class="file-size">Uploaded</div>
+                            </div>
+                        </div>
+                        <button class="btn-remove" onclick="removeDocument('${doc.id}')">Remove</button>
+                    </div>
+                    ` : ''}
+                `;
+                
+                documentsList.appendChild(documentCard);
+            });
+
+            // Update submit button state
+            const submitBtn = document.getElementById('submitDocumentsBtn');
+            if (allDocumentsUploaded()) {
+                submitBtn.innerHTML = '✅ All Documents Uploaded - Proceed to Exam';
+                submitBtn.disabled = false;
+            } else {
+                submitBtn.innerHTML = 'Upload All 6 Required Documents First';
+                submitBtn.disabled = true;
+            }
+        }
+
+        function handleFileUpload(docId, input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Check file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                return;
+            }
+
+            // Update application data
+            userApplication.documents[docId] = {
+                uploaded: true,
+                filename: file.name,
+                filetype: file.type,
+                size: file.size,
+                lastModified: file.lastModified,
+                verified: false,
+                type: userApplication.documents[docId].type || docId
+            };
+
+            // Add to timeline if first upload
+            const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+            if (uploadedDocs === 1) {
+                addTimelineEvent('First document uploaded');
+            } else if (uploadedDocs === 6) {
+                addTimelineEvent('All documents uploaded');
+            }
+
+            saveUserData();
+            updateDashboard();
+            loadDocumentsSection(); // Refresh the documents section
+        }
+
+        function removeDocument(docId) {
+            userApplication.documents[docId] = {
+                uploaded: false,
+                filename: null,
+                verified: false,
+                type: userApplication.documents[docId].type || docId
+            };
+            
+            saveUserData();
+            updateDashboard();
+            loadDocumentsSection();
+        }
+
+        function allDocumentsUploaded() {
+            if (!userApplication || !userApplication.documents) return false;
+            const docs = userApplication.documents;
+            return Object.values(docs).every(doc => doc.uploaded);
+        }
+
+        function checkDocumentsCompletion() {
+            if (allDocumentsUploaded()) {
+                // Update application status
+                userApplication.status = 'documents-completed';
+                
+                saveUserData();
+                updateDashboard();
+                
+                alert('All documents uploaded successfully! You can now take the online exam.');
+                showSection('exam');
+            } else {
+                const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+                alert(`Please upload all 6 required documents. Currently uploaded: ${uploadedDocs}/6`);
+            }
+        }
+
+        // ===== EXAM SECTION =====
+        function loadExamSection() {
+            if (!userApplication || !userApplication.program) {
+                document.getElementById('examSection').innerHTML = `
+                    <div class="content-header">
+                        <h1>Online Qualification Exam</h1>
+                        <p>Please apply for a program and upload documents first</p>
+                    </div>
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Not Eligible for Exam</h3>
+                        <p>You need to complete your application and upload all documents first.</p>
+                        <div style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="showSection('apply')">
+                                Apply for Program
+                            </button>
+                            <button class="btn btn-primary" onclick="showSection('documents')">
+                                Upload Documents
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (!allDocumentsUploaded()) {
+                document.getElementById('examSection').innerHTML = `
+                    <div class="content-header">
+                        <h1>Online Qualification Exam</h1>
+                        <p>Please upload all documents first</p>
+                    </div>
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Documents Required</h3>
+                        <p>You need to upload all 6 required documents before taking the exam.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('documents')">
+                            Upload Documents Now
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // User is eligible for exam
+            const examTitle = document.getElementById('examProgramTitle');
+            const examDescription = document.getElementById('examDescription');
+            const examStatusInfo = document.getElementById('examStatusInfo');
+            const startExamBtn = document.getElementById('startExamBtn');
+
+            examTitle.textContent = `${getProgramName(userApplication.program)} Qualification Exam`;
+            examDescription.textContent = `Take the qualification exam for the ${getProgramName(userApplication.program)} program. This exam will test your basic knowledge and aptitude for the program.`;
+
+            if (userApplication.exam.taken) {
+                examStatusInfo.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">${userApplication.exam.passed ? '✅' : '❌'}</div>
+                        <h4 style="color: ${userApplication.exam.passed ? 'var(--success)' : 'var(--danger)'}; margin-bottom: 10px;">
+                            Exam ${userApplication.exam.passed ? 'Passed' : 'Not Passed'}
+                        </h4>
+                        <p>Score: <strong>${userApplication.exam.score}%</strong> (Passing: 75%)</p>
+                        <p>Date Taken: ${new Date(userApplication.exam.dateTaken).toLocaleDateString()}</p>
+                    </div>
+                `;
+                startExamBtn.textContent = 'Exam Already Taken';
+                startExamBtn.disabled = true;
+            } else {
+                examStatusInfo.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">📝</div>
+                        <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Ready to Take Exam</h4>
+                        <p>You have 60 minutes to complete 50 questions.</p>
+                        <p><strong>Note:</strong> You can only take this exam once.</p>
+                    </div>
+                `;
+                startExamBtn.textContent = 'Start Exam Now';
+                startExamBtn.disabled = false;
+            }
+        }
+
+        function startExam() {
+            if (userApplication.exam.taken) {
+                alert('You have already taken the exam.');
+                return;
+            }
+
+            if (!allDocumentsUploaded()) {
+                alert('Please upload all required documents first.');
+                showSection('documents');
+                return;
+            }
+
+            // Save current state before redirecting
+            saveUserData();
+            
+            // Redirect to exam page
+            window.location.href = `exam.html?program=${userApplication.program}&applicationId=${userApplication.applicationId}`;
+        }
+
+        // ===== PROFILE SECTION =====
+        function loadProfileSection() {
+            // Clear any previous error/success messages
+            document.querySelectorAll('.error-message, .success-message').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Clear password fields
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            
+            // Reset password strength indicator
+            document.getElementById('passwordStrength').className = 'strength-bar';
+        }
+
+        function updatePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Clear previous messages
+            document.querySelectorAll('.error-message, .success-message').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Validate current password
+            if (!currentPassword) {
+                document.getElementById('currentPasswordError').textContent = 'Current password is required';
+                document.getElementById('currentPasswordError').style.display = 'block';
+                return;
+            }
+            
+            // Check if current password matches
+            if (currentPassword !== currentUser.account.password) {
+                document.getElementById('currentPasswordError').textContent = 'Current password is incorrect';
+                document.getElementById('currentPasswordError').style.display = 'block';
+                return;
+            }
+            
+            // Validate new password
+            if (!newPassword || newPassword.length < 8) {
+                document.getElementById('newPasswordError').textContent = 'New password must be at least 8 characters';
+                document.getElementById('newPasswordError').style.display = 'block';
+                return;
+            }
+            
+            // Check password strength
+            const hasUpperCase = /[A-Z]/.test(newPassword);
+            const hasLowerCase = /[a-z]/.test(newPassword);
+            const hasNumbers = /\d/.test(newPassword);
+            
+            if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
+                document.getElementById('newPasswordError').textContent = 'Password must contain uppercase, lowercase letters and numbers';
+                document.getElementById('newPasswordError').style.display = 'block';
+                return;
+            }
+            
+            // Check password match
+            if (newPassword !== confirmPassword) {
+                document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
+                document.getElementById('confirmPasswordError').style.display = 'block';
+                return;
+            }
+            
+            // Update password
+            currentUser.account.password = newPassword;
+            
+            // Save updated user data
+            if (saveUserData()) {
+                alert('Password updated successfully! You will need to use your new password for your next login.');
+                
+                // Clear form
+                document.getElementById('currentPassword').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmPassword').value = '';
+                
+                // Reset password strength indicator
+                document.getElementById('passwordStrength').className = 'strength-bar';
+                
+                // Show success message
+                document.getElementById('passwordMatchSuccess').textContent = 'Password updated successfully!';
+                document.getElementById('passwordMatchSuccess').style.display = 'block';
+                
+                // Return to dashboard
+                setTimeout(() => {
+                    showSection('overview');
+                }, 1500);
+            } else {
+                alert('Error updating password. Please try again.');
+            }
+        }
+
+        // Password strength checker
+        document.getElementById('newPassword')?.addEventListener('input', function() {
+            const password = this.value;
+            const strengthBar = document.getElementById('passwordStrength');
+            let strength = 0;
+            
+            strengthBar.className = 'strength-bar';
+            
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[a-z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+            
+            switch(strength) {
+                case 0:
+                case 1:
+                    strengthBar.className = 'strength-bar strength-weak';
+                    break;
+                case 2:
+                    strengthBar.className = 'strength-bar strength-fair';
+                    break;
+                case 3:
+                    strengthBar.className = 'strength-bar strength-good';
+                    break;
+                case 4:
+                case 5:
+                    strengthBar.className = 'strength-bar strength-strong';
+                    break;
+            }
+        });
+
+        // Password match checker
+        document.getElementById('confirmPassword')?.addEventListener('input', function() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = this.value;
+            const errorEl = document.getElementById('confirmPasswordError');
+            const successEl = document.getElementById('passwordMatchSuccess');
+            
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+            
+            if (confirmPassword && newPassword !== confirmPassword) {
+                errorEl.style.display = 'block';
+            } else if (confirmPassword && newPassword === confirmPassword) {
+                successEl.textContent = 'Passwords match ✓';
+                successEl.style.display = 'block';
+            }
+        });
+
+        // ===== STATUS SECTION =====
+        function loadStatusSection() {
+            if (!userApplication) {
+                document.getElementById('statusSection').innerHTML = `
+                    <div class="content-header">
+                        <h1>Application Status</h1>
+                        <p>No application found</p>
+                    </div>
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">No Active Application</h3>
+                        <p>You haven't started any scholarship application yet.</p>
+                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('apply')">
+                            Start Application
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Update application details
+            document.getElementById('statusApplicationId').textContent = userApplication.applicationId;
+            document.getElementById('statusProgram').textContent = getProgramName(userApplication.program);
+            document.getElementById('statusDateApplied').textContent = 
+                userApplication.submittedDate ? new Date(userApplication.submittedDate).toLocaleDateString() : '--';
+            document.getElementById('statusLastUpdated').textContent = new Date().toLocaleDateString();
+
+            // Update status badge
+            const statusBadge = document.getElementById('statusBadge');
+            let badgeClass = 'badge-pending';
+            let statusText = userApplication.status.replace('-', ' ').toUpperCase();
+            
+            switch(userApplication.status) {
+                case 'accepted':
+                    badgeClass = 'badge-approved';
+                    statusText = 'Accepted';
+                    break;
+                case 'rejected':
+                    badgeClass = 'badge-rejected';
+                    statusText = 'Rejected';
+                    break;
+                case 'pending':
+                    badgeClass = 'badge-pending';
+                    statusText = 'Pending Review';
+                    break;
+                case 'under-review':
+                    badgeClass = 'badge-under-review';
+                    statusText = 'Under Review';
+                    break;
+                case 'applied':
+                case 'documents-completed':
+                case 'exam-completed':
+                    badgeClass = 'badge-in-progress';
+                    statusText = 'In Progress';
+                    break;
+            }
+            
+            statusBadge.textContent = statusText;
+            statusBadge.className = 'status-badge ' + badgeClass;
+
+            // Update documents status
+            const docsList = document.getElementById('statusDocumentsList');
+            docsList.innerHTML = '';
+            
+            // Show documents in the specified order
+            const documentOrder = ['picture', 'birthcert', 'reportcard', 'goodmoral', 'tor', 'diploma'];
+            
+            documentOrder.forEach(docId => {
+                const doc = userApplication.documents[docId];
+                if (!doc) return;
+                
+                const docName = doc.type || docId;
+                const docStatus = doc.uploaded ? (doc.verified ? 'Verified' : 'Uploaded') : 'Pending';
+                const docStatusClass = doc.verified ? 'status-verified' : doc.uploaded ? 'status-uploaded' : 'status-pending';
+                
+                const row = document.createElement('div');
+                row.className = 'detail-row';
+                row.innerHTML = `
+                    <div class="detail-label">${docName}:</div>
+                    <div class="detail-value">
+                        <span class="document-status ${docStatusClass}">${docStatus}</span>
+                        ${doc.filename ? `<span style="margin-left: 10px; color: var(--medium-gray); font-size: 12px;">${doc.filename}</span>` : ''}
+                    </div>
+                `;
+                docsList.appendChild(row);
+            });
+
+            // Update exam results
+            document.getElementById('examResultStatus').textContent = 
+                userApplication.exam.taken ? 'Taken' : 'Not Taken';
+            document.getElementById('examScore').textContent = 
+                userApplication.exam.taken ? `${userApplication.exam.score}%` : '--';
+            document.getElementById('examResult').textContent = 
+                userApplication.exam.taken ? (userApplication.exam.passed ? 'Passed' : 'Not Passed') : '--';
+            document.getElementById('examDate').textContent = 
+                userApplication.exam.taken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--';
+
+            // Update timeline
+            const timeline = document.getElementById('applicationTimeline');
+            timeline.innerHTML = '';
+            
+            const timelineEvents = [
+                { date: userApplication.submittedDate, event: 'Application submitted', completed: userApplication.submittedDate ? true : false },
+                { date: null, event: 'Documents uploaded', completed: allDocumentsUploaded() },
+                { date: userApplication.exam.dateTaken, event: 'Exam taken', completed: userApplication.exam.taken },
+                { date: userApplication.adminReview.reviewDate, event: 'Admin review', completed: userApplication.status === 'accepted' || userApplication.status === 'rejected' || userApplication.status === 'pending' },
+                { date: userApplication.adminReview.reviewDate, event: 'Final decision', completed: userApplication.status === 'accepted' || userApplication.status === 'rejected' }
+            ];
+
+            timelineEvents.forEach((event, index) => {
+                if (!event.completed && index > 0 && !timelineEvents[index - 1].completed) return;
+                
+                const item = document.createElement('div');
+                item.className = `timeline-item ${event.completed ? 'completed' : index === 0 && userApplication.submittedDate ? 'completed' : ''}`;
+                item.innerHTML = `
+                    <div class="timeline-date">
+                        ${event.date ? new Date(event.date).toLocaleDateString() : 'Pending'}
+                    </div>
+                    <div class="timeline-content">
+                        <h4>${event.event}</h4>
+                        <p>${event.completed ? 'Completed' : 'Pending'}</p>
+                    </div>
+                `;
+                timeline.appendChild(item);
+            });
+        }
+
+        // ===== UTILITY FUNCTIONS =====
+        function getProgramName(programCode) {
+            const programs = {
+                'wadt': 'Web Application Development Training (WADT)',
+                'hrt': 'Hotel & Restaurant Technology (HRT)'
+            };
+            return programs[programCode] || programCode;
+        }
+
+        function addTimelineEvent(event) {
+            if (!userApplication.timeline) {
+                userApplication.timeline = [];
+            }
+            
+            userApplication.timeline.push({
+                date: new Date().toISOString(),
+                event: event
+            });
+        }
+
+        function saveUserData() {
+            try {
+                const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                const userIndex = users.findIndex(u => u.account?.username === currentUser.account.username);
+                
+                if (userIndex !== -1) {
+                    users[userIndex] = currentUser;
+                    localStorage.setItem('registeredUsers', JSON.stringify(users));
+                }
+                
+                // Also update session storage for quick access
+                sessionStorage.setItem('currentApplication', JSON.stringify(userApplication));
+                
+                return true;
+            } catch (error) {
+                console.error('Error saving user data:', error);
+                return false;
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        function setupEventListeners() {
+            // Check for exam results if redirected from exam page
+            const examResult = sessionStorage.getItem('examResult');
+            if (examResult) {
+                const result = JSON.parse(examResult);
+                if (result.applicationId === userApplication.applicationId) {
+                    // Update application with exam results
+                    userApplication.exam = {
+                        taken: true,
+                        score: result.score,
+                        passed: result.passed,
+                        dateTaken: result.dateTaken,
+                        maxScore: 100,
+                        passingScore: 75
+                    };
+                    
+                    // Update status to "pending" after all requirements are met
+                    userApplication.status = 'pending';
+                    
+                    // Add to timeline
+                    addTimelineEvent(`Exam taken - Score: ${result.score}% (${result.passed ? 'Passed' : 'Not passed'})`);
+                    addTimelineEvent('Application complete - Submitted for admin review');
+                    
+                    saveUserData();
+                    updateDashboard();
+                    
+                    // Clear the exam result from session storage
+                    sessionStorage.removeItem('examResult');
+                    
+                    // Show success message
+                    alert(`Exam completed! Your application is now complete and submitted for admin review.`);
+                    
+                    // Switch to status section
+                    showSection('status');
+                }
+            }
+            
+            // Check for admin updates
+            checkForAdminUpdates();
+        }
+
+        function checkForAdminUpdates() {
+            // Check if admin has updated the application status
+            if (userApplication && userApplication.adminReview && userApplication.adminReview.decision) {
+                if (userApplication.adminReview.decision === 'accepted' || userApplication.adminReview.decision === 'rejected') {
+                    userApplication.status = userApplication.adminReview.decision;
+                    saveUserData();
+                    updateDashboard();
+                }
+            }
+        }
+    </script>
+</body>
+</html>

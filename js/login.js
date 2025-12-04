@@ -153,7 +153,7 @@
                 showStatusMessage('✅ Login successful! Redirecting...', 'success');
                 
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                window.location.href = 'index.html';
+                window.location.href = 'student_dashboard.html';
             } else {
                 // Show error
                 loginButton.disabled = false;

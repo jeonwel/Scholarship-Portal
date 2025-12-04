@@ -260,7 +260,7 @@
             position: absolute;
             left: 0;
             top: 50%;
-            width: 45%;
+            width: 30%;
             height: 1px;
             background: #e1e5ee;
         }
@@ -270,7 +270,7 @@
             position: absolute;
             right: 0;
             top: 50%;
-            width: 45%;
+            width: 30%;
             height: 1px;
             background: #e1e5ee;
         }

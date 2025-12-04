@@ -382,38 +382,6 @@
             margin-bottom: 10px;
         }
 
-        /* Stats Section */
-        .stats {
-            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
-            color: white;
-            padding: 80px 20px;
-        }
-
-        .stats-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 40px;
-            text-align: center;
-        }
-
-        .stat-item {
-            padding: 30px;
-        }
-
-        .stat-number {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            color: var(--accent-blue);
-        }
-
-        .stat-label {
-            font-size: 18px;
-            opacity: 0.9;
-        }
-
         /* How It Works */
         .how-it-works {
             padding: 80px 20px;
@@ -657,12 +625,10 @@
             <div class="contact-info">
                 <span>📧 scholarships@aclc.edu.ph</span>
                 <span>📞 (032) 345-6789</span>
-                <span>🕒 Mon-Fri: 8:00 AM - 5:00 PM</span>
             </div>
             <div class="quick-links">
                 <a href="#">About TESDA</a>
                 <a href="#">FAQs</a>
-                <a href="#">Contact</a>
             </div>
         </div>
     </nav>
@@ -682,17 +648,14 @@
 
             <ul class="nav-menu" id="navMenu">
                 <li><a href="index.html" class="active">Home</a></li>
-                <li><a href="scholarships.html">Scholarships</a></li>
-                <li><a href="apply.html">Apply Now</a></li>
-                <li><a href="documents.html">Documents</a></li>
-                <li><a href="exams.html">Exams</a></li>
-                <li><a href="status.html">Track Status</a></li>
-                <li><a href="about.html">About</a></li>
+                <li><a href="#programs" onclick="smoothScroll('programs')">Scholarships</a></li>
+                <li><a href="#cta" onclick="smoothScroll('cta')">Apply Now</a></li>
+                <li><a href="#footer" onclick="smoothScroll('contacts')">Contacts</a></li>
+                <li><a href="#footer" onclick="smoothScroll('footer')">About</a></li>
             </ul>
 
-            <div class="auth-buttons">
-                <a href="login.html" class="btn btn-outline">Login</a>
-                <a href="register.html" class="btn btn-primary">Register</a>
+            <div class="auth-buttons" id="authButtons">
+                <!-- Will be populated by JavaScript -->
             </div>
         </div>
     </nav>
@@ -700,11 +663,11 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
-            <h2>Transform Your Future with TESDA Scholarships</h2>
+            <h2 id="welcomeMessage">Transform Your Future with TESDA Scholarships</h2>
             <p>Access quality technical education and skills training through the TESDA Scholarship Program at ACLC College. Apply online, upload documents, and take qualification exams—all in one platform.</p>
             <div class="hero-buttons">
                 <a href="register.html" class="btn btn-primary">Apply Now</a>
-                <a href="scholarships.html" class="btn btn-light">Learn More</a>
+                <a href="#programs" class="btn btn-light" onclick="smoothScroll('programs')">Learn More</a>
             </div>
         </div>
     </section>
@@ -735,7 +698,7 @@
     </section>
 
     <!-- Programs Section -->
-    <section class="programs">
+    <section class="programs" id="programs">
         <div class="section-title">
             <h2>Available Scholarship Programs</h2>
             <p>Choose from our accredited TESDA programs</p>
@@ -761,7 +724,7 @@
                         <p>• Basic Computer Literacy</p>
                         <p>• Passion for Technology</p>
                     </div>
-                    <a href="apply.html?program=wadt" class="btn btn-primary">Apply for WADT</a>
+                    <button class="btn btn-primary" onclick="applyForProgram('wadt')">Apply for WADT</button>
                 </div>
             </div>
             <div class="program-card">
@@ -784,30 +747,8 @@
                         <p>• Good Communication Skills</p>
                         <p>• Interest in Hospitality</p>
                     </div>
-                    <a href="apply.html?program=hrt" class="btn btn-primary">Apply for HRT</a>
+                    <button class="btn btn-primary" onclick="applyForProgram('hrt')">Apply for HRT</button>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Stats Section -->
-    <section class="stats">
-        <div class="stats-container">
-            <div class="stat-item">
-                <div class="stat-number">1,500+</div>
-                <div class="stat-label">Students Enrolled</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">95%</div>
-                <div class="stat-label">Graduation Rate</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">85%</div>
-                <div class="stat-label">Employment Rate</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-number">100%</div>
-                <div class="stat-label">Online Process</div>
             </div>
         </div>
     </section>
@@ -846,7 +787,7 @@
     </section>
 
     <!-- CTA Section -->
-    <section class="cta">
+    <section class="cta" id="cta">
         <div class="cta-content">
             <h2>Ready to Start Your Journey?</h2>
             <p>Join hundreds of successful students who have transformed their careers through TESDA scholarships. Apply now and take the first step toward your future.</p>
@@ -855,7 +796,7 @@
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
+    <footer class="footer" id="footer">
         <div class="footer-content">
             <div class="footer-section">
                 <h3>TESDA: ACLC Portal</h3>
@@ -871,10 +812,9 @@
                 <h3>Quick Links</h3>
                 <ul class="footer-links">
                     <li><a href="index.html">Home</a></li>
-                    <li><a href="scholarships.html">Scholarships</a></li>
-                    <li><a href="apply.html">Apply Now</a></li>
-                    <li><a href="documents.html">Documents</a></li>
-                    <li><a href="exams.html">Exams</a></li>
+                    <li><a href="#programs" onclick="smoothScroll('programs')">Scholarships</a></li>
+                    <li><a href="#cta" onclick="smoothScroll('cta')">Apply Now</a></li>
+                    <li><a href="#footer" onclick="smoothScroll('footer')">About</a></li>
                 </ul>
             </div>
             <div class="footer-section">
@@ -900,16 +840,241 @@
         <div class="copyright">
             <p>© 2024 TESDA: ACLC Scholarship Portal. All rights reserved. | Designed for Educational Purposes</p>
             <p style="margin-top: 10px;">This system uses XML, JavaScript, and browser storage technologies.</p>
+            <p style="margin-top: 5px; font-size: 12px; color: #888;" id="dataInfo">
+                <!-- Data info will be shown here -->
+            </p>
         </div>
     </footer>
 
     <script>
-        // Mobile menu toggle
+        // ===== SMOOTH SCROLL FUNCTION =====
+        function smoothScroll(targetId) {
+            const targetElement = document.getElementById(targetId);
+            if (targetElement) {
+                window.scrollTo({
+                    top: targetElement.offsetTop - 80,
+                    behavior: 'smooth'
+                });
+                
+                // Close mobile menu if open
+                const navMenu = document.getElementById('navMenu');
+                navMenu.classList.remove('active');
+                
+                return false; // Prevent default anchor behavior
+            }
+        }
+
+        // ===== PROGRAM APPLICATION FUNCTION =====
+        function applyForProgram(program) {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            
+            if (isLoggedIn === 'true') {
+                // User is logged in, redirect to application page
+                window.location.href = `apply.html?program=${program}`;
+            } else {
+                // User is not logged in, redirect to login page
+                alert('Please login first to apply for this program.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // ===== XML DATA PROCESSING (IN BACKGROUND) =====
+        
+        // Function to process XML data from localStorage
+        function processXMLData() {
+            try {
+                // Get all registered users from localStorage (populated by registration)
+                const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                
+                console.log('Processing data for', registeredUsers.length, 'registered users');
+                
+                // Calculate statistics from the data
+                const stats = {
+                    totalStudents: registeredUsers.length,
+                    wadtStudents: registeredUsers.filter(user => user.program === 'wadt').length,
+                    hrtStudents: registeredUsers.filter(user => user.program === 'hrt').length,
+                    approvedStudents: registeredUsers.filter(user => user.status === 'approved').length,
+                    pendingStudents: registeredUsers.filter(user => !user.status || user.status === 'pending').length
+                };
+                
+                // Update welcome message if user is logged in
+                updateWelcomeMessage();
+                
+                // Show data info in footer (hidden by default, only visible on hover/inspect)
+                updateDataInfo(stats);
+                
+                return stats;
+            } catch (error) {
+                console.error('Error processing XML data:', error);
+                return null;
+            }
+        }
+        
+        // Update welcome message based on login status
+        function updateWelcomeMessage() {
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const username = sessionStorage.getItem('username');
+            const fullName = sessionStorage.getItem('fullName');
+            
+            if (isLoggedIn === 'true' && username) {
+                const welcomeElement = document.getElementById('welcomeMessage');
+                if (welcomeElement) {
+                    welcomeElement.textContent = `Welcome back, ${fullName || username}!`;
+                }
+            }
+        }
+        
+        // Update data info in footer (hidden by default)
+        function updateDataInfo(stats) {
+            const dataInfoElement = document.getElementById('dataInfo');
+            if (dataInfoElement && stats) {
+                dataInfoElement.innerHTML = `
+                    Data loaded: ${stats.totalStudents} applications | 
+                    WADT: ${stats.wadtStudents} | 
+                    HRT: ${stats.hrtStudents} | 
+                    Updated: ${new Date().toLocaleTimeString()}
+                `;
+                
+                // Hide by default (only visible on inspect)
+                dataInfoElement.style.opacity = '0.5';
+                dataInfoElement.style.fontSize = '11px';
+                dataInfoElement.style.transition = 'opacity 0.3s';
+                
+                // Show on hover
+                dataInfoElement.addEventListener('mouseenter', () => {
+                    dataInfoElement.style.opacity = '1';
+                });
+                
+                dataInfoElement.addEventListener('mouseleave', () => {
+                    dataInfoElement.style.opacity = '0.5';
+                });
+            }
+        }
+        
+        // ===== AUTHENTICATION UI UPDATES =====
+        function updateAuthButtons() {
+            const authButtons = document.getElementById('authButtons');
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const username = sessionStorage.getItem('username');
+            const userType = sessionStorage.getItem('userType');
+            
+            if (isLoggedIn === 'true' && username) {
+                // User is logged in
+                if (userType === 'admin') {
+                    // Show admin-specific stats in the navbar
+                    const stats = processXMLData();
+                    authButtons.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 6px; display: flex; gap: 20px;">
+                                <span style="color: #4fc3f7; font-weight: 600;">
+                                    👥 ${stats ? stats.totalStudents : '0'}
+                                </span>
+                                <span style="color: #4fc3f7; font-weight: 600;">
+                                    💻 ${stats ? stats.wadtStudents : '0'}
+                                </span>
+                                <span style="color: #4fc3f7; font-weight: 600;">
+                                    🏨 ${stats ? stats.hrtStudents : '0'}
+                                </span>
+                            </div>
+                            <span style="color: #1e3c72; font-weight: 600;">👑 ${username}</span>
+                            <a href="admin-dashboard.html" class="btn btn-outline">Admin Panel</a>
+                            <a href="#" class="btn btn-primary" onclick="logout()">Logout</a>
+                        </div>
+                    `;
+                } else {
+                    // Regular user
+                    authButtons.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <span style="color: #1e3c72; font-weight: 600;">👤 ${username}</span>
+                            <a href="dashboard.html" class="btn btn-outline">Dashboard</a>
+                            <a href="#" class="btn btn-primary" onclick="logout()">Logout</a>
+                        </div>
+                    `;
+                }
+            } else {
+                // User is not logged in
+                authButtons.innerHTML = `
+                    <a href="login.html" class="btn btn-outline">Login</a>
+                    <a href="register.html" class="btn btn-primary">Register</a>
+                `;
+            }
+        }
+        
+        // ===== XML DATA EXPORT (HIDDEN FEATURE) =====
+        // This is for development/debugging purposes only
+        function exportXMLData() {
+            try {
+                const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                
+                // Create XML structure
+                let xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+<scholarshipPortalData>
+    <exportInfo>
+        <exportDate>${new Date().toISOString()}</exportDate>
+        <totalApplications>${registeredUsers.length}</totalApplications>
+        <systemVersion>1.0</systemVersion>
+    </exportInfo>
+    <applications>`;
+                
+                // Add each application
+                registeredUsers.forEach((user, index) => {
+                    xmlString += `
+    <application id="${index + 1}">
+        <personalInformation>
+            <name>${escapeXML(user.personal.firstName)} ${escapeXML(user.personal.lastName)}</name>
+            <email>${escapeXML(user.personal.email)}</email>
+            <program>${escapeXML(user.program)}</program>
+            <status>${escapeXML(user.status || 'pending')}</status>
+            <registrationDate>${escapeXML(user.registrationDate)}</registrationDate>
+        </personalInformation>
+    </application>`;
+                });
+                
+                xmlString += `
+    </applications>
+</scholarshipPortalData>`;
+                
+                // Create download
+                const blob = new Blob([xmlString], { type: 'application/xml' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `portal_data_export_${Date.now()}.xml`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                console.log('XML data exported successfully');
+                return true;
+            } catch (error) {
+                console.error('Error exporting XML data:', error);
+                return false;
+            }
+        }
+        
+        // Helper function to escape XML
+        function escapeXML(str) {
+            if (!str) return '';
+            return str.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+        
+        // ===== UTILITY FUNCTIONS =====
+        function logout() {
+            sessionStorage.clear();
+            window.location.reload();
+        }
+        
         function toggleMenu() {
             const navMenu = document.getElementById('navMenu');
             navMenu.classList.toggle('active');
         }
-
+        
         // Close mobile menu when clicking outside
         document.addEventListener('click', function(event) {
             const navMenu = document.getElementById('navMenu');
@@ -919,52 +1084,67 @@
                 navMenu.classList.remove('active');
             }
         });
-
-        // Check if user is logged in
-function checkLoginStatus() {
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn');
-    const authButtons = document.querySelector('.auth-buttons');
-    const username = sessionStorage.getItem('username');
-    const userType = sessionStorage.getItem('userType');
-    
-    if (isLoggedIn === 'true' && username) {
-        // User is logged in - show user info and logout
-        authButtons.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <span style="color: #1e3c72; font-weight: 600;">👤 ${username}</span>
-                <a href="dashboard.html" class="btn btn-outline">Dashboard</a>
-                <a href="#" class="btn btn-primary" onclick="logout()">Logout</a>
-            </div>
-        `;
         
-        // Update welcome message if exists
-        const welcomeElement = document.getElementById('welcomeMessage');
-        if (welcomeElement) {
-            const fullName = sessionStorage.getItem('fullName') || username;
-            welcomeElement.textContent = `Welcome back, ${fullName}!`;
-        }
-    } else {
-        // User is not logged in - show login/register buttons
-        authButtons.innerHTML = `
-            <a href="login.html" class="btn btn-outline">Login</a>
-            <a href="register.html" class="btn btn-primary">Register</a>
-        `;
-    }
-}
-
-function logout() {
-    // Clear login data
-    sessionStorage.removeItem('isLoggedIn');
-    sessionStorage.removeItem('userType');
-    sessionStorage.removeItem('username');
-    sessionStorage.removeItem('fullName');
-    
-    // Reload page to update UI
-    window.location.reload();
-}
-
-// Check login status on page load
-window.addEventListener('DOMContentLoaded', checkLoginStatus);
+        // ===== INITIALIZATION =====
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Homepage initialized - Navigation updated');
+            
+            // Process XML data in background
+            const stats = processXMLData();
+            console.log('Statistics calculated:', stats);
+            
+            // Update authentication buttons (with admin stats in navbar if admin)
+            updateAuthButtons();
+            
+            // Auto-logout after 30 minutes of inactivity
+            let inactivityTimer;
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                inactivityTimer = setTimeout(() => {
+                    if (sessionStorage.getItem('isLoggedIn') === 'true') {
+                        console.log('Session expired due to inactivity');
+                        logout();
+                    }
+                }, 30 * 60 * 1000);
+            }
+            
+            // Reset timer on user activity
+            document.addEventListener('mousemove', resetInactivityTimer);
+            document.addEventListener('keypress', resetInactivityTimer);
+            resetInactivityTimer();
+            
+            // For debugging: Add export feature (Ctrl+Shift+X)
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.shiftKey && e.key === 'X') {
+                    e.preventDefault();
+                    if (confirm('Export all portal data as XML file?')) {
+                        exportXMLData();
+                    }
+                }
+            });
+        });
+        
+        // Expose useful functions for debugging
+        window.debugPortal = function() {
+            console.log('=== PORTAL DEBUG INFO ===');
+            console.log('Session:', {
+                isLoggedIn: sessionStorage.getItem('isLoggedIn'),
+                username: sessionStorage.getItem('username'),
+                userType: sessionStorage.getItem('userType')
+            });
+            
+            const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            console.log('Registered users:', users.length);
+            console.log('Users by program:', {
+                wadt: users.filter(u => u.program === 'wadt').length,
+                hrt: users.filter(u => u.program === 'hrt').length
+            });
+            
+            return {
+                totalUsers: users.length,
+                stats: processXMLData()
+            };
+        };
     </script>
 </body>
 </html>
