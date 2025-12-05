@@ -332,6 +332,22 @@
             border-left: 4px solid #2e7d32;
         }
 
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         /* Status Messages */
         .status-message {
             position: fixed;
@@ -476,7 +492,7 @@
 
                 <button type="submit" class="btn-login" id="loginButton">
                     <span class="icon">🔑</span> 
-                    <span>Sign In</span>
+                    <span id="loginText">Sign In</span>
                     <div class="spinner" id="loginSpinner"></div>
                 </button>
 
@@ -514,30 +530,50 @@
 
         // ===== AUTHENTICATION SYSTEM =====
         
-        // Main authentication function
+        // Main authentication function - UPDATED
         function authenticateUser(username, password, userType) {
             console.log('Attempting login:', { username, userType });
             
-            // Check admin users
+            // Check admin users - Check localStorage first, then defaults
             if (userType === 'admin') {
-                const adminUsers = [
-                    { username: 'admin', password: 'admin123', userType: 'admin' }
-                ];
+                // First check localStorage for admin users
+                const storedAdmins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
                 
-                const admin = adminUsers.find(user => 
-                    user.username === username && user.password === password
-                );
-                
-                if (admin) {
-                    return {
-                        success: true,
-                        user: { 
-                            username, 
-                            userType: 'admin', 
-                            fullName: 'Administrator',
-                            role: 'admin'
+                // If no admins in localStorage, create default admin
+                if (storedAdmins.length === 0) {
+                    const defaultAdmins = [
+                        { 
+                            username: 'admin', 
+                            password: 'admin123', 
+                            userType: 'admin',
+                            fullName: 'System Administrator',
+                            role: 'Super Admin'
                         }
-                    };
+                    ];
+                    localStorage.setItem('adminUsers', JSON.stringify(defaultAdmins));
+                    
+                    const admin = defaultAdmins.find(user => 
+                        user.username === username && user.password === password
+                    );
+                    
+                    if (admin) {
+                        return {
+                            success: true,
+                            user: admin
+                        };
+                    }
+                } else {
+                    // Check stored admins
+                    const admin = storedAdmins.find(user => 
+                        user.username === username && user.password === password
+                    );
+                    
+                    if (admin) {
+                        return {
+                            success: true,
+                            user: admin
+                        };
+                    }
                 }
                 
                 return { success: false, message: 'Invalid admin credentials' };
@@ -545,7 +581,7 @@
             
             // Check student users in localStorage
             const registeredUsers = getRegisteredUsers();
-            console.log('Registered users in system:', registeredUsers);
+            console.log('Registered students in system:', registeredUsers);
             
             const user = registeredUsers.find(u => {
                 const usernameMatch = u.account?.username === username || u.personal?.email === username;
@@ -554,7 +590,7 @@
             });
             
             if (user) {
-                console.log('User found:', user);
+                console.log('Student found:', user);
                 return {
                     success: true,
                     user: {
@@ -576,7 +612,7 @@
         function getRegisteredUsers() {
             try {
                 const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-                console.log('Users in localStorage:', users);
+                console.log('Students in localStorage:', users);
                 return users;
             } catch (error) {
                 console.error('Error reading users from localStorage:', error);
@@ -593,6 +629,7 @@
             const password = document.getElementById('password').value.trim();
             const rememberMe = document.getElementById('rememberMe').checked;
             const loginButton = document.getElementById('loginButton');
+            const loginText = document.getElementById('loginText');
             const spinner = document.getElementById('loginSpinner');
             
             // Reset errors
@@ -620,8 +657,8 @@
             
             // Show loading state
             loginButton.disabled = true;
+            loginText.textContent = 'Signing in...';
             spinner.style.display = 'block';
-            loginButton.querySelector('span').textContent = 'Signing in...';
             
             // Simulate network delay
             await new Promise(resolve => setTimeout(resolve, 800));
@@ -637,20 +674,26 @@
                     clearRememberedUser();
                 }
                 
-                // Set user session
+                // Set user session with proper session keys
                 setUserSession(authResult.user);
                 
-                // Show success and redirect
-                loginButton.querySelector('span').textContent = '✓ Success!';
+                // Show success message
+                loginText.textContent = '✓ Success!';
                 showStatusMessage('✅ Login successful! Redirecting...', 'success');
                 
+                // Redirect based on user type - UPDATED
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                window.location.href = '../html/student-dashboard.html';
+                
+                if (currentUserType === 'admin') {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'student-dashboard.html';
+                }
             } else {
                 // Show error
                 loginButton.disabled = false;
+                loginText.textContent = 'Sign In';
                 spinner.style.display = 'none';
-                loginButton.querySelector('span').textContent = 'Sign In';
                 showError('loginError', authResult.message);
                 showStatusMessage('❌ Login failed. Please check credentials.', 'error');
             }
@@ -697,7 +740,18 @@
             
             if (!username) return;
             
-            // Find user in registered users
+            // Check if user is trying to reset admin password
+            if (currentUserType === 'admin') {
+                const admins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+                const admin = admins.find(a => a.username === username);
+                
+                if (admin) {
+                    alert('For security reasons, admin password reset must be done by system administrator.');
+                    return;
+                }
+            }
+            
+            // Find user in registered users (students)
             const registeredUsers = getRegisteredUsers();
             const user = registeredUsers.find(u => 
                 u.account?.username === username || u.personal?.email === username
@@ -746,19 +800,40 @@
             }
         }
 
-        // ===== SESSION MANAGEMENT =====
+        // ===== SESSION MANAGEMENT ===== - UPDATED
         function setUserSession(user) {
+            // Clear any existing session
+            sessionStorage.clear();
+            
+            // Set common session data
             sessionStorage.setItem('isLoggedIn', 'true');
-            sessionStorage.setItem('userType', user.userType);
             sessionStorage.setItem('username', user.username);
             sessionStorage.setItem('fullName', user.fullName || user.username);
             
-            if (user.email) sessionStorage.setItem('email', user.email);
-            if (user.program) sessionStorage.setItem('program', user.program);
-            if (user.registrationDate) sessionStorage.setItem('registrationDate', user.registrationDate);
-            if (user.role) sessionStorage.setItem('role', user.role);
+            // Set type-specific session data
+            if (user.userType === 'admin') {
+                sessionStorage.setItem('userType', 'admin');
+                sessionStorage.setItem('isAdminLoggedIn', 'true');
+                sessionStorage.setItem('adminUsername', user.username);
+                sessionStorage.setItem('role', user.role || 'Administrator');
+                
+                // Also set admin-specific data
+                if (user.role) sessionStorage.setItem('adminRole', user.role);
+            } else {
+                sessionStorage.setItem('userType', 'student');
+                sessionStorage.setItem('email', user.email || '');
+                sessionStorage.setItem('program', user.program || '');
+                sessionStorage.setItem('registrationDate', user.registrationDate || '');
+            }
             
             console.log('Session set for user:', user);
+            console.log('Session storage:', {
+                isLoggedIn: sessionStorage.getItem('isLoggedIn'),
+                userType: sessionStorage.getItem('userType'),
+                username: sessionStorage.getItem('username'),
+                fullName: sessionStorage.getItem('fullName'),
+                isAdminLoggedIn: sessionStorage.getItem('isAdminLoggedIn')
+            });
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -823,25 +898,28 @@
             document.getElementById('username').focus();
             
             console.log('Login system initialized');
-            console.log('Registered users:', getRegisteredUsers());
+            console.log('Registered students:', getRegisteredUsers());
+            console.log('Admin users:', JSON.parse(localStorage.getItem('adminUsers') || '[]'));
         });
 
         // ===== DEBUG FUNCTIONS =====
         window.debugLogin = function() {
             console.log('=== DEBUG LOGIN INFO ===');
             console.log('Current user type:', currentUserType);
-            console.log('Registered users:', getRegisteredUsers());
+            console.log('Registered students:', getRegisteredUsers());
+            console.log('Admin users:', JSON.parse(localStorage.getItem('adminUsers') || '[]'));
             console.log('Remembered user:', localStorage.getItem('rememberedUser'));
             console.log('Session storage:', {
                 isLoggedIn: sessionStorage.getItem('isLoggedIn'),
+                userType: sessionStorage.getItem('userType'),
                 username: sessionStorage.getItem('username'),
-                userType: sessionStorage.getItem('userType')
+                isAdminLoggedIn: sessionStorage.getItem('isAdminLoggedIn')
             });
             
             // Test accounts
             const testAccounts = [
                 { username: 'admin', password: 'admin123', type: 'admin' },
-                { username: 'testuser', password: 'testpass123', type: 'student' }
+                { username: 'teststudent', password: 'test1234', type: 'student' }
             ];
             
             console.log('Test accounts available:', testAccounts);
@@ -874,14 +952,33 @@
             existingUsers.push(testAccount);
             localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
             
-            showStatusMessage('✅ Test account created: teststudent / test1234', 'success');
-            console.log('Test account created:', testAccount);
+            showStatusMessage('✅ Test student account created: teststudent / test1234', 'success');
+            console.log('Test student account created:', testAccount);
+        };
+
+        // Create test admin account
+        window.createTestAdmin = function() {
+            const testAdmin = {
+                username: "testadmin",
+                password: "testadmin123",
+                userType: "admin",
+                fullName: "Test Administrator",
+                role: "Administrator"
+            };
+            
+            const existingAdmins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+            existingAdmins.push(testAdmin);
+            localStorage.setItem('adminUsers', JSON.stringify(existingAdmins));
+            
+            showStatusMessage('✅ Test admin account created: testadmin / testadmin123', 'success');
+            console.log('Test admin account created:', testAdmin);
         };
 
         // Clear all accounts (for testing)
         window.clearAllAccounts = function() {
-            if (confirm('Clear ALL registered accounts? This cannot be undone.')) {
+            if (confirm('Clear ALL accounts? This cannot be undone.')) {
                 localStorage.removeItem('registeredUsers');
+                localStorage.removeItem('adminUsers');
                 localStorage.removeItem('rememberedUser');
                 showStatusMessage('✅ All accounts cleared', 'success');
                 console.log('All accounts cleared');
@@ -892,6 +989,21 @@
         window.logout = function() {
             sessionStorage.clear();
             window.location.href = 'login.html';
+        };
+
+        // Quick login for testing
+        window.quickLogin = function(type) {
+            if (type === 'admin') {
+                document.getElementById('username').value = 'admin';
+                document.getElementById('password').value = 'admin123';
+                selectUserType('admin');
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            } else {
+                document.getElementById('username').value = 'teststudent';
+                document.getElementById('password').value = 'test1234';
+                selectUserType('student');
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
         };
     </script>
     

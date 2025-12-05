@@ -733,6 +733,9 @@
         .badge-approved { background: #e8f5e9; color: var(--success); }
         .badge-rejected { background: #ffebee; color: var(--danger); }
         .badge-in-progress { background: #e3f2fd; color: #1976d2; }
+        .badge-not-started { background: #f5f5f5; color: var(--medium-gray); }
+        .badge-documents-completed { background: #e3f2fd; color: #2196f3; }
+        .badge-exam-completed { background: #e8f5e9; color: #4caf50; }
 
         .timeline {
             margin-top: 30px;
@@ -789,12 +792,23 @@
             margin: 0 auto;
         }
 
-        .profile-form {
-            margin-top: 30px;
+        .profile-info {
+            background: var(--light-blue);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .profile-info h3 {
+            color: var(--primary-blue);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .form-group label {
@@ -802,12 +816,6 @@
             margin-bottom: 8px;
             color: var(--dark-gray);
             font-weight: 500;
-            font-size: 14px;
-        }
-
-        .form-group label.required:after {
-            content: " *";
-            color: var(--danger);
         }
 
         .form-control {
@@ -829,7 +837,20 @@
             font-size: 12px;
             color: var(--medium-gray);
             margin-top: 5px;
-            display: block;
+        }
+
+        .error-message {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .success-message {
+            color: var(--success);
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
         }
 
         .password-strength {
@@ -847,42 +868,10 @@
             transition: all 0.3s;
         }
 
-        .strength-weak { background: #e53935; width: 25%; }
-        .strength-fair { background: #ff9800; width: 50%; }
+        .strength-weak { background: var(--danger); width: 25%; }
+        .strength-fair { background: var(--warning); width: 50%; }
         .strength-good { background: #ffb300; width: 75%; }
-        .strength-strong { background: #43a047; width: 100%; }
-
-        .error-message {
-            color: var(--danger);
-            font-size: 12px;
-            margin-top: 5px;
-            display: none;
-        }
-
-        .success-message {
-            color: var(--success);
-            font-size: 12px;
-            margin-top: 5px;
-            display: none;
-        }
-
-        .current-password-info {
-            background: var(--light-blue);
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid var(--primary-blue);
-        }
-
-        .current-password-info h4 {
-            color: var(--primary-blue);
-            margin-bottom: 5px;
-        }
-
-        .current-password-info p {
-            color: var(--medium-gray);
-            font-size: 14px;
-        }
+        .strength-strong { background: var(--success); width: 100%; }
 
         /* Notifications */
         .notification-badge {
@@ -915,11 +904,18 @@
             padding: 30px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
         .modal-header {
+            text-align: center;
             margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            font-size: 50px;
+            color: var(--primary-blue);
+            margin-bottom: 15px;
         }
 
         .modal-header h3 {
@@ -935,41 +931,37 @@
         .modal-body p {
             color: var(--medium-gray);
             line-height: 1.6;
-            margin-bottom: 15px;
+            text-align: center;
         }
 
-        .modal-actions {
+        .modal-footer {
             display: flex;
+            justify-content: center;
             gap: 15px;
-            justify-content: flex-end;
-        }
-
-        .btn-cancel {
-            background: #f8f9fa;
-            color: var(--dark-gray);
-            border: 2px solid #e1e5ee;
-            padding: 10px 25px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-cancel:hover {
-            background: #e9ecef;
         }
 
         .btn-confirm {
             background: linear-gradient(135deg, var(--success) 0%, #4caf50 100%);
             color: white;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
+            padding: 12px 30px;
+            min-width: 100px;
+        }
+
+        .btn-cancel {
+            background: var(--light-blue);
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+            padding: 12px 30px;
+            min-width: 100px;
         }
 
         .btn-confirm:hover {
             background: linear-gradient(135deg, #4caf50 0%, var(--success) 100%);
+        }
+
+        .btn-cancel:hover {
+            background: var(--primary-blue);
+            color: white;
         }
 
         /* Responsive Design */
@@ -1023,7 +1015,7 @@
                 gap: 5px;
             }
             
-            .modal-actions {
+            .modal-footer {
                 flex-direction: column;
             }
         }
@@ -1093,11 +1085,13 @@
                 <li>
                     <a href="#" onclick="showSection('exam')" id="examLink">
                         <span>💻</span> Take Online Exam
+                        <span class="notification-badge" id="examNotification" style="display: none;">!</span>
                     </a>
                 </li>
                 <li>
                     <a href="#" onclick="showSection('status')" id="statusLink">
                         <span>📊</span> Application Status
+                        <span class="notification-badge" id="statusNotification" style="display: none;">!</span>
                     </a>
                 </li>
                 <li>
@@ -1199,7 +1193,7 @@
                         </ul>
                     </div>
 
-                    <button class="btn btn-primary" onclick="showConfirmationModal()" id="submitApplicationBtn">
+                    <button class="btn btn-primary" onclick="submitApplication()" id="submitApplicationBtn">
                         Submit Application
                     </button>
                 </div>
@@ -1336,51 +1330,78 @@
                 </div>
             </div>
 
-            <!-- Update Profile -->
+            <!-- Update Profile Section -->
             <div id="profileSection" class="content-section" style="display: none;">
                 <div class="content-header">
                     <h1>Update Profile</h1>
                     <p>Manage your account settings and security</p>
                 </div>
-
+                
                 <div class="profile-section">
-                    <div class="current-password-info">
-                        <h4>Password Update Information</h4>
-                        <p>You can change your password here. After changing your password, you must use the new password for your next login.</p>
+                    <div class="profile-info">
+                        <h3><span>👤</span> Personal Information</h3>
+                        <div class="detail-row">
+                            <div class="detail-label">Full Name:</div>
+                            <div class="detail-value" id="profileFullName">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Email:</div>
+                            <div class="detail-value" id="profileEmail">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Username:</div>
+                            <div class="detail-value" id="profileUsername">--</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Account Created:</div>
+                            <div class="detail-value" id="profileCreatedDate">--</div>
+                        </div>
                     </div>
 
-                    <div class="profile-form">
+                    <div class="profile-info">
+                        <h3><span>🔒</span> Change Password</h3>
+                        <p style="color: var(--medium-gray); margin-bottom: 20px;">
+                            Update your password for enhanced security. You will need to use the new password for your next login.
+                        </p>
+                        
                         <div class="form-group">
-                            <label for="currentPassword" class="required">Current Password</label>
+                            <label for="currentPassword">Current Password</label>
                             <input type="password" id="currentPassword" class="form-control" placeholder="Enter your current password">
-                            <div class="error-message" id="currentPasswordError">Current password is required</div>
+                            <div class="error-message" id="currentPasswordError"></div>
                         </div>
 
                         <div class="form-group">
-                            <label for="newPassword" class="required">New Password</label>
-                            <input type="password" id="newPassword" class="form-control" placeholder="Enter your new password">
+                            <label for="newPassword">New Password</label>
+                            <input type="password" id="newPassword" class="form-control" placeholder="Create a new password">
                             <div class="password-strength">
                                 <div class="strength-bar" id="passwordStrength"></div>
                             </div>
-                            <div class="form-hint">Must be at least 8 characters with uppercase, lowercase, and numbers</div>
-                            <div class="error-message" id="newPasswordError">New password must be at least 8 characters</div>
+                            <div class="form-hint">Password must be at least 8 characters with uppercase, lowercase, and numbers</div>
+                            <div class="error-message" id="newPasswordError"></div>
                         </div>
 
                         <div class="form-group">
-                            <label for="confirmPassword" class="required">Confirm New Password</label>
-                            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter your new password">
-                            <div class="error-message" id="confirmPasswordError">Passwords do not match</div>
-                            <div class="success-message" id="passwordMatchSuccess">Passwords match ✓</div>
+                            <label for="confirmPassword">Confirm New Password</label>
+                            <input type="password" id="confirmPassword" class="form-control" placeholder="Re-enter new password">
+                            <div class="error-message" id="confirmPasswordError"></div>
+                            <div class="success-message" id="passwordSuccess" style="display: none;">✅ Passwords match!</div>
                         </div>
 
-                        <div style="margin-top: 40px;">
+                        <div style="text-align: center; margin-top: 30px;">
                             <button class="btn btn-primary" onclick="updatePassword()" id="updatePasswordBtn">
                                 Update Password
                             </button>
-                            <button class="btn" onclick="showSection('overview')" style="margin-left: 15px; background: #f8f9fa; color: var(--dark-gray); border: 2px solid #e1e5ee;">
-                                Cancel
-                            </button>
                         </div>
+                    </div>
+
+                    <div class="profile-info" style="background: #fff8e1; border: 2px solid #ffd54f;">
+                        <h3><span>⚠️</span> Security Notice</h3>
+                        <ul style="color: var(--medium-gray); padding-left: 20px;">
+                            <li>Your password will be updated immediately</li>
+                            <li>You will need to login again with your new password</li>
+                            <li>Make sure to remember your new password</li>
+                            <li>For security reasons, passwords are encrypted in storage</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -1391,16 +1412,15 @@
     <div class="modal-overlay" id="confirmationModal">
         <div class="modal">
             <div class="modal-header">
-                <h3>Confirm Application</h3>
+                <div class="modal-icon">⚠️</div>
+                <h3 id="modalTitle">Confirm Program Selection</h3>
             </div>
             <div class="modal-body">
-                <p>You are about to apply for the <strong id="modalProgramName">[Program Name]</strong> scholarship program.</p>
-                <p><strong>Important:</strong> Once submitted, you cannot change your program selection.</p>
-                <p>Please make sure you meet all requirements before proceeding.</p>
+                <p id="modalMessage">Are you sure you want to apply for this program?</p>
             </div>
-            <div class="modal-actions">
-                <button class="btn-cancel" onclick="hideConfirmationModal()">Cancel</button>
-                <button class="btn-confirm" onclick="confirmApplication()">Confirm & Submit</button>
+            <div class="modal-footer">
+                <button class="btn btn-confirm" onclick="confirmProgramSelection()">Yes, Apply</button>
+                <button class="btn btn-cancel" onclick="cancelProgramSelection()">No, Go Back</button>
             </div>
         </div>
     </div>
@@ -1410,6 +1430,7 @@
         let currentUser = null;
         let userApplication = null;
         let currentSection = 'overview';
+        let pendingProgramSelection = null;
 
         // ===== INITIALIZATION =====
         window.addEventListener('DOMContentLoaded', function() {
@@ -1665,19 +1686,17 @@
             // Show notifications based on application status
             const applyNotification = document.getElementById('applyNotification');
             const documentsNotification = document.getElementById('documentsNotification');
-            
-            // Remove notifications from exam and status links (as requested)
-            document.getElementById('examLink').querySelector('.notification-badge')?.remove();
-            document.getElementById('statusLink').querySelector('.notification-badge')?.remove();
+            const examNotification = document.getElementById('examNotification');
+            const statusNotification = document.getElementById('statusNotification');
 
             if (userApplication.status === 'not-started') {
                 applyNotification.style.display = 'inline-block';
             } else if (userApplication.program && !allDocumentsUploaded()) {
                 documentsNotification.style.display = 'inline-block';
-            } else {
-                // Hide all notifications when application is complete
-                applyNotification.style.display = 'none';
-                documentsNotification.style.display = 'none';
+            } else if (allDocumentsUploaded() && !userApplication.exam.taken) {
+                examNotification.style.display = 'inline-block';
+            } else if (userApplication.exam.taken) {
+                statusNotification.style.display = 'inline-block';
             }
         }
 
@@ -1714,7 +1733,7 @@
                     loadExamSection();
                     break;
                 case 'status':
-                    loadStatusSection();
+                    loadStatusSection(); // UPDATED: Now this will refresh automatically
                     break;
                 case 'profile':
                     loadProfileSection();
@@ -1787,8 +1806,8 @@
                             <h4>Requirements:</h4>
                             ${program.requirements.map(req => `<p>• ${req}</p>`).join('')}
                         </div>
-                        <button class="btn btn-primary" onclick="selectProgram('${program.id}')">
-                            Select ${program.name.split(' ')[0]}
+                        <button class="btn btn-primary" onclick="showConfirmationModal('${program.id}')">
+                            Apply for ${program.name.split(' ')[0]}
                         </button>
                     </div>
                 `;
@@ -1798,12 +1817,36 @@
             applicationForm.style.display = 'none';
         }
 
-        function selectProgram(programId) {
+        function showConfirmationModal(programId) {
+            const programName = getProgramName(programId);
+            pendingProgramSelection = programId;
+            
+            // Update modal content
+            document.getElementById('modalTitle').textContent = `Apply for ${programName} Program`;
+            document.getElementById('modalMessage').textContent = 
+                `Are you sure you want to apply for the ${programName} program? Once selected, you cannot change your program.`;
+            
+            // Show modal
+            document.getElementById('confirmationModal').style.display = 'flex';
+        }
+
+        function confirmProgramSelection() {
+            if (!pendingProgramSelection) return;
+            
+            const programId = pendingProgramSelection;
             userApplication.program = programId;
             userApplication.status = 'applied';
+            userApplication.submittedDate = new Date().toISOString();
+            
+            // Add to timeline
+            addTimelineEvent('Program selected: ' + getProgramName(programId));
+            addTimelineEvent('Application submitted for review');
             
             saveUserData();
             updateDashboard();
+            
+            // Hide modal
+            document.getElementById('confirmationModal').style.display = 'none';
             
             // Show application form
             document.getElementById('applicationForm').style.display = 'block';
@@ -1816,44 +1859,309 @@
             
             // Scroll to form
             document.getElementById('applicationForm').scrollIntoView({ behavior: 'smooth' });
+            
+            // Reset pending selection
+            pendingProgramSelection = null;
         }
 
-        function showConfirmationModal() {
+        function cancelProgramSelection() {
+            // Hide modal
+            document.getElementById('confirmationModal').style.display = 'none';
+            
+            // Reset pending selection
+            pendingProgramSelection = null;
+        }
+
+        function submitApplication() {
             if (!userApplication.program) {
                 alert('Please select a program first.');
                 return;
             }
 
-            // Set program name in modal
-            document.getElementById('modalProgramName').textContent = getProgramName(userApplication.program);
-            
-            // Show modal
-            document.getElementById('confirmationModal').style.display = 'flex';
-        }
-
-        function hideConfirmationModal() {
-            document.getElementById('confirmationModal').style.display = 'none';
-        }
-
-        function confirmApplication() {
             // Update application status
             userApplication.status = 'applied';
             userApplication.submittedDate = new Date().toISOString();
             
             // Add to timeline
-            addTimelineEvent('Application submitted');
+            addTimelineEvent('Application submitted successfully');
             
             saveUserData();
             updateDashboard();
-            
-            // Hide modal
-            hideConfirmationModal();
             
             // Show success message
             alert('Application submitted successfully! Please proceed to upload your documents.');
             
             // Switch to documents section
             showSection('documents');
+        }
+
+        // ===== STATUS SECTION =====
+        // MODIFIED: This function now updates all sections automatically
+        function loadStatusSection() {
+            if (!userApplication) {
+                // No application yet
+                document.getElementById('statusSection').innerHTML = `
+                    <div class="content-header">
+                        <h1>Application Status</h1>
+                        <p>Track your scholarship application progress</p>
+                    </div>
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 64px; margin-bottom: 20px;">📝</div>
+                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">No Application Found</h3>
+                        <p style="color: var(--medium-gray); margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                            You haven't applied for any scholarship program yet. Start your application to track your progress.
+                        </p>
+                        <button class="btn btn-primary" onclick="showSection('apply')">
+                            Apply for Scholarship
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+
+            // Load real-time application information
+            updateApplicationInfo();
+            updateDocumentsStatus();
+            updateExamResults();
+            updateApplicationTimeline();
+        }
+
+        function updateApplicationInfo() {
+            const appId = document.getElementById('statusApplicationId');
+            const program = document.getElementById('statusProgram');
+            const statusBadge = document.getElementById('statusBadge');
+            const dateApplied = document.getElementById('statusDateApplied');
+            const lastUpdated = document.getElementById('statusLastUpdated');
+
+            // Application ID
+            appId.textContent = userApplication.applicationId || '--';
+
+            // Program
+            program.textContent = userApplication.program ? getProgramName(userApplication.program) : '--';
+
+            // Status with appropriate badge
+            let badgeClass = 'badge-pending';
+            let statusText = 'Not Started';
+            
+            switch(userApplication.status) {
+                case 'not-started':
+                    badgeClass = 'badge-not-started';
+                    statusText = 'Not Started';
+                    break;
+                case 'applied':
+                    badgeClass = 'badge-in-progress';
+                    statusText = 'Applied - In Progress';
+                    break;
+                case 'documents-completed':
+                    badgeClass = 'badge-documents-completed';
+                    statusText = 'Documents Completed';
+                    break;
+                case 'exam-completed':
+                    badgeClass = 'badge-exam-completed';
+                    statusText = 'Exam Completed';
+                    break;
+                case 'pending':
+                    badgeClass = 'badge-pending';
+                    statusText = 'Pending Review';
+                    break;
+                case 'under-review':
+                    badgeClass = 'badge-under-review';
+                    statusText = 'Under Review';
+                    break;
+                case 'accepted':
+                    badgeClass = 'badge-approved';
+                    statusText = 'Accepted';
+                    break;
+                case 'rejected':
+                    badgeClass = 'badge-rejected';
+                    statusText = 'Rejected';
+                    break;
+            }
+
+            statusBadge.className = `status-badge ${badgeClass}`;
+            statusBadge.textContent = statusText;
+
+            // Dates
+            if (userApplication.submittedDate) {
+                const date = new Date(userApplication.submittedDate);
+                dateApplied.textContent = date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } else {
+                dateApplied.textContent = '--';
+            }
+
+            // Last updated (use timeline if available)
+            if (userApplication.timeline && userApplication.timeline.length > 0) {
+                const lastEvent = userApplication.timeline[userApplication.timeline.length - 1];
+                const lastEventDate = new Date(lastEvent.date);
+                lastUpdated.textContent = lastEventDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } else {
+                lastUpdated.textContent = '--';
+            }
+        }
+
+        function updateDocumentsStatus() {
+            const documentsList = document.getElementById('statusDocumentsList');
+            
+            if (!userApplication.documents) {
+                documentsList.innerHTML = '<p>No documents information available.</p>';
+                return;
+            }
+
+            let html = '';
+            const documents = [
+                { id: 'picture', name: '2x2 ID Picture' },
+                { id: 'birthcert', name: 'Birth Certificate' },
+                { id: 'reportcard', name: 'Report Card' },
+                { id: 'goodmoral', name: 'Certificate of Good Moral Character' },
+                { id: 'tor', name: 'Transcript of Records (TOR)' },
+                { id: 'diploma', name: 'High School Diploma' }
+            ];
+
+            documents.forEach(doc => {
+                const docData = userApplication.documents[doc.id];
+                const isUploaded = docData && docData.uploaded;
+                const isVerified = docData && docData.verified;
+                
+                let statusText = 'Not Uploaded';
+                let statusClass = 'status-required';
+                
+                if (isUploaded) {
+                    if (isVerified) {
+                        statusText = 'Verified';
+                        statusClass = 'status-verified';
+                    } else {
+                        statusText = 'Uploaded';
+                        statusClass = 'status-uploaded';
+                    }
+                }
+
+                html += `
+                    <div class="detail-row">
+                        <div class="detail-label">${doc.name}:</div>
+                        <div class="detail-value">
+                            <span class="document-status ${statusClass}">${statusText}</span>
+                            ${docData && docData.filename ? `<br><small style="color: var(--medium-gray);">${docData.filename}</small>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Add summary
+            const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+            const totalDocs = Object.keys(userApplication.documents).length;
+            const progress = Math.round((uploadedDocs / totalDocs) * 100);
+            
+            html += `
+                <div class="detail-row" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--light-blue);">
+                    <div class="detail-label">Progress:</div>
+                    <div class="detail-value">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="flex: 1; background: var(--light-blue); height: 10px; border-radius: 5px; overflow: hidden;">
+                                <div style="width: ${progress}%; background: var(--primary-blue); height: 100%; border-radius: 5px;"></div>
+                            </div>
+                            <div style="font-weight: 600; color: var(--primary-blue);">${uploadedDocs}/${totalDocs} (${progress}%)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            documentsList.innerHTML = html;
+        }
+
+        function updateExamResults() {
+            const examResultStatus = document.getElementById('examResultStatus');
+            const examScore = document.getElementById('examScore');
+            const examResult = document.getElementById('examResult');
+            const examDate = document.getElementById('examDate');
+
+            if (userApplication.exam.taken) {
+                examResultStatus.textContent = 'Completed';
+                examScore.textContent = `${userApplication.exam.score}%`;
+                examResult.textContent = userApplication.exam.passed ? 'Passed' : 'Failed';
+                examResult.style.color = userApplication.exam.passed ? 'var(--success)' : 'var(--danger)';
+                examResult.style.fontWeight = '600';
+                
+                if (userApplication.exam.dateTaken) {
+                    const date = new Date(userApplication.exam.dateTaken);
+                    examDate.textContent = date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                } else {
+                    examDate.textContent = '--';
+                }
+            } else {
+                examResultStatus.textContent = 'Not Taken';
+                examScore.textContent = '--';
+                examResult.textContent = '--';
+                examDate.textContent = '--';
+            }
+        }
+
+        function updateApplicationTimeline() {
+            const timeline = document.getElementById('applicationTimeline');
+            
+            if (!userApplication.timeline || userApplication.timeline.length === 0) {
+                timeline.innerHTML = `
+                    <div class="timeline-item">
+                        <div class="timeline-date">--</div>
+                        <div class="timeline-content">
+                            <h4>No Timeline Events</h4>
+                            <p>Start your application to see timeline events.</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            // Sort timeline by date (newest first)
+            const sortedTimeline = [...userApplication.timeline].sort((a, b) => 
+                new Date(b.date) - new Date(a.date)
+            );
+
+            sortedTimeline.forEach((event, index) => {
+                const date = new Date(event.date);
+                const isLatest = index === 0;
+                
+                html += `
+                    <div class="timeline-item ${isLatest ? 'current' : 'completed'}">
+                        <div class="timeline-date">
+                            ${date.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                            })}
+                            <br>
+                            <small style="color: var(--medium-gray);">
+                                ${date.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </small>
+                        </div>
+                        <div class="timeline-content">
+                            <h4>${event.event}</h4>
+                            <p>Application status updated</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            timeline.innerHTML = html;
         }
 
         // ===== DOCUMENTS SECTION =====
@@ -2005,17 +2313,27 @@
                 type: userApplication.documents[docId].type || docId
             };
 
-            // Add to timeline if first upload
+            // Add to timeline
             const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+            const totalDocs = Object.keys(userApplication.documents).length;
+            
             if (uploadedDocs === 1) {
-                addTimelineEvent('First document uploaded');
-            } else if (uploadedDocs === 6) {
+                addTimelineEvent('First document uploaded: ' + file.name);
+            } else if (uploadedDocs === totalDocs) {
                 addTimelineEvent('All documents uploaded');
+                userApplication.status = 'documents-completed';
+            } else {
+                addTimelineEvent(`Document uploaded: ${file.name} (${uploadedDocs}/${totalDocs})`);
             }
 
             saveUserData();
             updateDashboard();
             loadDocumentsSection(); // Refresh the documents section
+            
+            // Auto-update status section if it's currently visible
+            if (currentSection === 'status') {
+                loadStatusSection();
+            }
         }
 
         function removeDocument(docId) {
@@ -2026,15 +2344,243 @@
                 type: userApplication.documents[docId].type || docId
             };
             
+            // Update status if all documents were uploaded before
+            if (userApplication.status === 'documents-completed') {
+                userApplication.status = 'applied';
+            }
+            
+            addTimelineEvent(`Document removed: ${userApplication.documents[docId].type}`);
+            
             saveUserData();
             updateDashboard();
             loadDocumentsSection();
+            
+            // Auto-update status section if it's currently visible
+            if (currentSection === 'status') {
+                loadStatusSection();
+            }
+        }
+
+        function setupPasswordValidation() {
+            const newPasswordInput = document.getElementById('newPassword');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+
+            if (newPasswordInput) {
+                newPasswordInput.addEventListener('input', function() {
+                    checkPasswordStrength(this.value);
+                });
+            }
+
+            if (confirmPasswordInput) {
+                confirmPasswordInput.addEventListener('input', function() {
+                    validatePasswordMatch();
+                });
+            }
+        }
+
+        function checkPasswordStrength(password) {
+            const strengthBar = document.getElementById('passwordStrength');
+            if (!strengthBar) return;
+
+            let strength = 0;
+            strengthBar.className = 'strength-bar';
+
+            if (password.length >= 8) strength++;
+            if (/[A-Z]/.test(password)) strength++;
+            if (/[0-9]/.test(password)) strength++;
+            if (/[^A-Za-z0-9]/.test(password)) strength++;
+
+            switch(strength) {
+                case 0:
+                case 1:
+                    strengthBar.className = 'strength-bar strength-weak';
+                    break;
+                case 2:
+                    strengthBar.className = 'strength-bar strength-fair';
+                    break;
+                case 3:
+                    strengthBar.className = 'strength-bar strength-good';
+                    break;
+                case 4:
+                    strengthBar.className = 'strength-bar strength-strong';
+                    break;
+            }
+        }
+
+        function validatePasswordMatch() {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorEl = document.getElementById('confirmPasswordError');
+            const successEl = document.getElementById('passwordSuccess');
+
+            if (!errorEl || !successEl) return;
+
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            if (confirmPassword && newPassword !== confirmPassword) {
+                errorEl.textContent = 'Passwords do not match';
+                errorEl.style.display = 'block';
+            } else if (confirmPassword && newPassword === confirmPassword && newPassword.length >= 8) {
+                successEl.style.display = 'block';
+            }
+        }
+
+        function updatePassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            // Clear previous errors
+            const currentPasswordError = document.getElementById('currentPasswordError');
+            const newPasswordError = document.getElementById('newPasswordError');
+            const confirmPasswordError = document.getElementById('confirmPasswordError');
+
+            if (currentPasswordError) currentPasswordError.style.display = 'none';
+            if (newPasswordError) newPasswordError.style.display = 'none';
+            if (confirmPasswordError) confirmPasswordError.style.display = 'none';
+
+            let isValid = true;
+
+            // Validate current password
+            if (!currentPassword) {
+                if (currentPasswordError) {
+                    currentPasswordError.textContent = 'Current password is required';
+                    currentPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            } else if (currentPassword !== currentUser.account.password) {
+                if (currentPasswordError) {
+                    currentPasswordError.textContent = 'Current password is incorrect';
+                    currentPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            }
+
+            // Validate new password
+            if (!newPassword) {
+                if (newPasswordError) {
+                    newPasswordError.textContent = 'New password is required';
+                    newPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            } else if (newPassword.length < 8) {
+                if (newPasswordError) {
+                    newPasswordError.textContent = 'Password must be at least 8 characters';
+                    newPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            } else if (!/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+                if (newPasswordError) {
+                    newPasswordError.textContent = 'Password must contain uppercase letter and number';
+                    newPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            }
+
+            // Validate password match
+            if (newPassword !== confirmPassword) {
+                if (confirmPasswordError) {
+                    confirmPasswordError.textContent = 'Passwords do not match';
+                    confirmPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            }
+
+            // Check if new password is same as current
+            if (newPassword === currentPassword) {
+                if (newPasswordError) {
+                    newPasswordError.textContent = 'New password must be different from current password';
+                    newPasswordError.style.display = 'block';
+                }
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Update password
+            currentUser.account.password = newPassword;
+
+            // Add to timeline if it exists
+            if (userApplication && userApplication.timeline) {
+                addTimelineEvent('Password updated');
+            }
+
+            // Save updated user data
+            if (saveUserData()) {
+                alert('Password updated successfully! You will be logged out to apply the changes.');
+
+                // Logout after successful password change
+                setTimeout(() => {
+                    logout();
+                }, 1000);
+            } else {
+                alert('Error updating password. Please try again.');
+            }
         }
 
         function allDocumentsUploaded() {
             if (!userApplication || !userApplication.documents) return false;
             const docs = userApplication.documents;
             return Object.values(docs).every(doc => doc.uploaded);
+        }
+
+        // ===== PROFILE SECTION =====
+        function loadProfileSection() {
+            // Debug: Check if data is loaded correctly
+            console.log('Loading profile for user:', currentUser);
+            console.log('Personal data:', currentUser?.personal);
+            console.log('Account data:', currentUser?.account);
+
+            if (!currentUser || !currentUser.personal || !currentUser.account) {
+                console.error('User data not properly loaded!');
+                alert('Error loading profile data. Please try logging out and back in.');
+                return;
+            }
+
+            // Load user information
+            document.getElementById('profileFullName').textContent = 
+                `${currentUser.personal.firstName || ''} ${currentUser.personal.lastName || ''}`.trim();
+            document.getElementById('profileEmail').textContent = currentUser.personal.email || 'No email set';
+            document.getElementById('profileUsername').textContent = currentUser.account.username || 'No username';
+
+            // Format the registration date
+            if (currentUser.registrationDate) {
+                const regDate = new Date(currentUser.registrationDate);
+                document.getElementById('profileCreatedDate').textContent = 
+                    regDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+            } else {
+                // If no registration date, use current date or show fallback
+                document.getElementById('profileCreatedDate').textContent = 
+                    new Date().toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+            }
+
+            // Clear password fields
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+
+            // Clear error messages
+            document.getElementById('currentPasswordError').style.display = 'none';
+            document.getElementById('newPasswordError').style.display = 'none';
+            document.getElementById('confirmPasswordError').style.display = 'none';
+            document.getElementById('passwordSuccess').style.display = 'none';
+
+            // Reset password strength indicator
+            document.getElementById('passwordStrength').className = 'strength-bar';
+
+            // Setup password validation
+            setupPasswordValidation();
         }
 
         function checkDocumentsCompletion() {
@@ -2046,6 +2592,10 @@
                 updateDashboard();
                 
                 alert('All documents uploaded successfully! You can now take the online exam.');
+                
+                // Auto-update status section
+                loadStatusSection();
+                
                 showSection('exam');
             } else {
                 const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
@@ -2053,7 +2603,6 @@
             }
         }
 
-        // ===== EXAM SECTION =====
         function loadExamSection() {
             if (!userApplication || !userApplication.program) {
                 document.getElementById('examSection').innerHTML = `
@@ -2077,7 +2626,7 @@
                 `;
                 return;
             }
-
+        
             if (!allDocumentsUploaded()) {
                 document.getElementById('examSection').innerHTML = `
                     <div class="content-header">
@@ -2095,36 +2644,57 @@
                 `;
                 return;
             }
-
+        
             // User is eligible for exam
             const examTitle = document.getElementById('examProgramTitle');
             const examDescription = document.getElementById('examDescription');
             const examStatusInfo = document.getElementById('examStatusInfo');
             const startExamBtn = document.getElementById('startExamBtn');
-
+        
             examTitle.textContent = `${getProgramName(userApplication.program)} Qualification Exam`;
             examDescription.textContent = `Take the qualification exam for the ${getProgramName(userApplication.program)} program. This exam will test your basic knowledge and aptitude for the program.`;
-
+        
             if (userApplication.exam.taken) {
-                examStatusInfo.innerHTML = `
-                    <div style="text-align: center;">
-                        <div style="font-size: 32px; margin-bottom: 10px;">${userApplication.exam.passed ? '✅' : '❌'}</div>
-                        <h4 style="color: ${userApplication.exam.passed ? 'var(--success)' : 'var(--danger)'}; margin-bottom: 10px;">
-                            Exam ${userApplication.exam.passed ? 'Passed' : 'Not Passed'}
-                        </h4>
-                        <p>Score: <strong>${userApplication.exam.score}%</strong> (Passing: 75%)</p>
-                        <p>Date Taken: ${new Date(userApplication.exam.dateTaken).toLocaleDateString()}</p>
-                    </div>
-                `;
-                startExamBtn.textContent = 'Exam Already Taken';
-                startExamBtn.disabled = true;
+                const canRetake = canRetakeExam();
+
+                if (canRetake) {
+                    examStatusInfo.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🔄</div>
+                            <h4 style="color: var(--warning); margin-bottom: 10px;">Eligible for Retake</h4>
+                            <p>Previous Score: <strong>${userApplication.exam.score}%</strong> (${userApplication.exam.passed ? 'Passed' : 'Not Passed'})</p>
+                            <p>7-day waiting period has passed. You can retake the exam.</p>
+                            <p style="color: var(--warning); font-weight: 500; margin-top: 10px;">
+                                ⚠️ Note: Retaking will replace your previous score.
+                            </p>
+                        </div>
+                    `;
+                    startExamBtn.textContent = 'Retake Exam Now';
+                    startExamBtn.disabled = false;
+                } else {
+                    examStatusInfo.innerHTML = `
+                        <div style="text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 10px;">${userApplication.exam.passed ? '✅' : '❌'}</div>
+                            <h4 style="color: ${userApplication.exam.passed ? 'var(--success)' : 'var(--danger)'}; margin-bottom: 10px;">
+                                Exam ${userApplication.exam.passed ? 'Passed' : 'Not Passed'}
+                            </h4>
+                            <p>Score: <strong>${userApplication.exam.score}%</strong> (Passing: 75%)</p>
+                            <p>Date Taken: ${new Date(userApplication.exam.dateTaken).toLocaleDateString()}</p>
+                            <p style="color: var(--warning); font-weight: 500; margin-top: 10px;">
+                                ⏳ You can retake this exam in 7 days from the date taken.
+                            </p>
+                        </div>
+                    `;
+                    startExamBtn.textContent = 'Exam Already Taken';
+                    startExamBtn.disabled = true;
+                }
             } else {
                 examStatusInfo.innerHTML = `
                     <div style="text-align: center;">
                         <div style="font-size: 32px; margin-bottom: 10px;">📝</div>
                         <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Ready to Take Exam</h4>
-                        <p>You have 60 minutes to complete 50 questions.</p>
-                        <p><strong>Note:</strong> You can only take this exam once.</p>
+                        <p>You have 5 minutes to complete 16 questions.</p>
+                        <p><strong>Note:</strong> You can only take this exam once every 7 days.</p>
                     </div>
                 `;
                 startExamBtn.textContent = 'Start Exam Now';
@@ -2137,288 +2707,26 @@
                 alert('You have already taken the exam.');
                 return;
             }
-
+        
             if (!allDocumentsUploaded()) {
                 alert('Please upload all required documents first.');
                 showSection('documents');
                 return;
             }
-
+        
+            // Get the logged-in username
+            const username = sessionStorage.getItem('username');
+            if (!username) {
+                alert('Please login again.');
+                logout();
+                return;
+            }
+        
             // Save current state before redirecting
             saveUserData();
-            
-            // Redirect to exam page
-            window.location.href = `exam.html?program=${userApplication.program}&applicationId=${userApplication.applicationId}`;
-        }
 
-        // ===== PROFILE SECTION =====
-        function loadProfileSection() {
-            // Clear any previous error/success messages
-            document.querySelectorAll('.error-message, .success-message').forEach(el => {
-                el.style.display = 'none';
-            });
-            
-            // Clear password fields
-            document.getElementById('currentPassword').value = '';
-            document.getElementById('newPassword').value = '';
-            document.getElementById('confirmPassword').value = '';
-            
-            // Reset password strength indicator
-            document.getElementById('passwordStrength').className = 'strength-bar';
-        }
-
-        function updatePassword() {
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            // Clear previous messages
-            document.querySelectorAll('.error-message, .success-message').forEach(el => {
-                el.style.display = 'none';
-            });
-            
-            // Validate current password
-            if (!currentPassword) {
-                document.getElementById('currentPasswordError').textContent = 'Current password is required';
-                document.getElementById('currentPasswordError').style.display = 'block';
-                return;
-            }
-            
-            // Check if current password matches
-            if (currentPassword !== currentUser.account.password) {
-                document.getElementById('currentPasswordError').textContent = 'Current password is incorrect';
-                document.getElementById('currentPasswordError').style.display = 'block';
-                return;
-            }
-            
-            // Validate new password
-            if (!newPassword || newPassword.length < 8) {
-                document.getElementById('newPasswordError').textContent = 'New password must be at least 8 characters';
-                document.getElementById('newPasswordError').style.display = 'block';
-                return;
-            }
-            
-            // Check password strength
-            const hasUpperCase = /[A-Z]/.test(newPassword);
-            const hasLowerCase = /[a-z]/.test(newPassword);
-            const hasNumbers = /\d/.test(newPassword);
-            
-            if (!hasUpperCase || !hasLowerCase || !hasNumbers) {
-                document.getElementById('newPasswordError').textContent = 'Password must contain uppercase, lowercase letters and numbers';
-                document.getElementById('newPasswordError').style.display = 'block';
-                return;
-            }
-            
-            // Check password match
-            if (newPassword !== confirmPassword) {
-                document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
-                document.getElementById('confirmPasswordError').style.display = 'block';
-                return;
-            }
-            
-            // Update password
-            currentUser.account.password = newPassword;
-            
-            // Save updated user data
-            if (saveUserData()) {
-                alert('Password updated successfully! You will need to use your new password for your next login.');
-                
-                // Clear form
-                document.getElementById('currentPassword').value = '';
-                document.getElementById('newPassword').value = '';
-                document.getElementById('confirmPassword').value = '';
-                
-                // Reset password strength indicator
-                document.getElementById('passwordStrength').className = 'strength-bar';
-                
-                // Show success message
-                document.getElementById('passwordMatchSuccess').textContent = 'Password updated successfully!';
-                document.getElementById('passwordMatchSuccess').style.display = 'block';
-                
-                // Return to dashboard
-                setTimeout(() => {
-                    showSection('overview');
-                }, 1500);
-            } else {
-                alert('Error updating password. Please try again.');
-            }
-        }
-
-        // Password strength checker
-        document.getElementById('newPassword')?.addEventListener('input', function() {
-            const password = this.value;
-            const strengthBar = document.getElementById('passwordStrength');
-            let strength = 0;
-            
-            strengthBar.className = 'strength-bar';
-            
-            if (password.length >= 8) strength++;
-            if (/[A-Z]/.test(password)) strength++;
-            if (/[a-z]/.test(password)) strength++;
-            if (/\d/.test(password)) strength++;
-            if (/[^A-Za-z0-9]/.test(password)) strength++;
-            
-            switch(strength) {
-                case 0:
-                case 1:
-                    strengthBar.className = 'strength-bar strength-weak';
-                    break;
-                case 2:
-                    strengthBar.className = 'strength-bar strength-fair';
-                    break;
-                case 3:
-                    strengthBar.className = 'strength-bar strength-good';
-                    break;
-                case 4:
-                case 5:
-                    strengthBar.className = 'strength-bar strength-strong';
-                    break;
-            }
-        });
-
-        // Password match checker
-        document.getElementById('confirmPassword')?.addEventListener('input', function() {
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = this.value;
-            const errorEl = document.getElementById('confirmPasswordError');
-            const successEl = document.getElementById('passwordMatchSuccess');
-            
-            errorEl.style.display = 'none';
-            successEl.style.display = 'none';
-            
-            if (confirmPassword && newPassword !== confirmPassword) {
-                errorEl.style.display = 'block';
-            } else if (confirmPassword && newPassword === confirmPassword) {
-                successEl.textContent = 'Passwords match ✓';
-                successEl.style.display = 'block';
-            }
-        });
-
-        // ===== STATUS SECTION =====
-        function loadStatusSection() {
-            if (!userApplication) {
-                document.getElementById('statusSection').innerHTML = `
-                    <div class="content-header">
-                        <h1>Application Status</h1>
-                        <p>No application found</p>
-                    </div>
-                    <div style="text-align: center; padding: 40px;">
-                        <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
-                        <h3 style="color: var(--primary-blue); margin-bottom: 15px;">No Active Application</h3>
-                        <p>You haven't started any scholarship application yet.</p>
-                        <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('apply')">
-                            Start Application
-                        </button>
-                    </div>
-                `;
-                return;
-            }
-
-            // Update application details
-            document.getElementById('statusApplicationId').textContent = userApplication.applicationId;
-            document.getElementById('statusProgram').textContent = getProgramName(userApplication.program);
-            document.getElementById('statusDateApplied').textContent = 
-                userApplication.submittedDate ? new Date(userApplication.submittedDate).toLocaleDateString() : '--';
-            document.getElementById('statusLastUpdated').textContent = new Date().toLocaleDateString();
-
-            // Update status badge
-            const statusBadge = document.getElementById('statusBadge');
-            let badgeClass = 'badge-pending';
-            let statusText = userApplication.status.replace('-', ' ').toUpperCase();
-            
-            switch(userApplication.status) {
-                case 'accepted':
-                    badgeClass = 'badge-approved';
-                    statusText = 'Accepted';
-                    break;
-                case 'rejected':
-                    badgeClass = 'badge-rejected';
-                    statusText = 'Rejected';
-                    break;
-                case 'pending':
-                    badgeClass = 'badge-pending';
-                    statusText = 'Pending Review';
-                    break;
-                case 'under-review':
-                    badgeClass = 'badge-under-review';
-                    statusText = 'Under Review';
-                    break;
-                case 'applied':
-                case 'documents-completed':
-                case 'exam-completed':
-                    badgeClass = 'badge-in-progress';
-                    statusText = 'In Progress';
-                    break;
-            }
-            
-            statusBadge.textContent = statusText;
-            statusBadge.className = 'status-badge ' + badgeClass;
-
-            // Update documents status
-            const docsList = document.getElementById('statusDocumentsList');
-            docsList.innerHTML = '';
-            
-            // Show documents in the specified order
-            const documentOrder = ['picture', 'birthcert', 'reportcard', 'goodmoral', 'tor', 'diploma'];
-            
-            documentOrder.forEach(docId => {
-                const doc = userApplication.documents[docId];
-                if (!doc) return;
-                
-                const docName = doc.type || docId;
-                const docStatus = doc.uploaded ? (doc.verified ? 'Verified' : 'Uploaded') : 'Pending';
-                const docStatusClass = doc.verified ? 'status-verified' : doc.uploaded ? 'status-uploaded' : 'status-pending';
-                
-                const row = document.createElement('div');
-                row.className = 'detail-row';
-                row.innerHTML = `
-                    <div class="detail-label">${docName}:</div>
-                    <div class="detail-value">
-                        <span class="document-status ${docStatusClass}">${docStatus}</span>
-                        ${doc.filename ? `<span style="margin-left: 10px; color: var(--medium-gray); font-size: 12px;">${doc.filename}</span>` : ''}
-                    </div>
-                `;
-                docsList.appendChild(row);
-            });
-
-            // Update exam results
-            document.getElementById('examResultStatus').textContent = 
-                userApplication.exam.taken ? 'Taken' : 'Not Taken';
-            document.getElementById('examScore').textContent = 
-                userApplication.exam.taken ? `${userApplication.exam.score}%` : '--';
-            document.getElementById('examResult').textContent = 
-                userApplication.exam.taken ? (userApplication.exam.passed ? 'Passed' : 'Not Passed') : '--';
-            document.getElementById('examDate').textContent = 
-                userApplication.exam.taken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--';
-
-            // Update timeline
-            const timeline = document.getElementById('applicationTimeline');
-            timeline.innerHTML = '';
-            
-            const timelineEvents = [
-                { date: userApplication.submittedDate, event: 'Application submitted', completed: userApplication.submittedDate ? true : false },
-                { date: null, event: 'Documents uploaded', completed: allDocumentsUploaded() },
-                { date: userApplication.exam.dateTaken, event: 'Exam taken', completed: userApplication.exam.taken },
-                { date: userApplication.adminReview.reviewDate, event: 'Admin review', completed: userApplication.status === 'accepted' || userApplication.status === 'rejected' || userApplication.status === 'pending' },
-                { date: userApplication.adminReview.reviewDate, event: 'Final decision', completed: userApplication.status === 'accepted' || userApplication.status === 'rejected' }
-            ];
-
-            timelineEvents.forEach((event, index) => {
-                if (!event.completed && index > 0 && !timelineEvents[index - 1].completed) return;
-                
-                const item = document.createElement('div');
-                item.className = `timeline-item ${event.completed ? 'completed' : index === 0 && userApplication.submittedDate ? 'completed' : ''}`;
-                item.innerHTML = `
-                    <div class="timeline-date">
-                        ${event.date ? new Date(event.date).toLocaleDateString() : 'Pending'}
-                    </div>
-                    <div class="timeline-content">
-                        <h4>${event.event}</h4>
-                        <p>${event.completed ? 'Completed' : 'Pending'}</p>
-                    </div>
-                `;
-                timeline.appendChild(item);
-            });
+            // Redirect to exam page with user info
+            window.location.href = `exam.html?program=${userApplication.program}&applicationId=${userApplication.applicationId}&username=${encodeURIComponent(username)}`;
         }
 
         // ===== UTILITY FUNCTIONS =====
@@ -2439,6 +2747,11 @@
                 date: new Date().toISOString(),
                 event: event
             });
+            
+            // Auto-update status section if it's currently visible
+            if (currentSection === 'status') {
+                updateApplicationTimeline();
+            }
         }
 
         function saveUserData() {
@@ -2447,6 +2760,21 @@
                 const userIndex = users.findIndex(u => u.account?.username === currentUser.account.username);
                 
                 if (userIndex !== -1) {
+                    // Preserve any existing exam data if it exists
+                    const existingUser = users[userIndex];
+                    if (existingUser.applications && existingUser.applications.length > 0) {
+                        // Find existing exam data
+                        const existingApp = existingUser.applications.find(app => 
+                            app.applicationId === userApplication.applicationId
+                        );
+                        if (existingApp && existingApp.exam) {
+                            // Keep existing exam data unless it's being updated
+                            if (!userApplication.exam.taken && existingApp.exam.taken) {
+                                userApplication.exam = existingApp.exam;
+                            }
+                        }
+                    }
+                    
                     users[userIndex] = currentUser;
                     localStorage.setItem('registeredUsers', JSON.stringify(users));
                 }
@@ -2470,41 +2798,62 @@
             // Check for exam results if redirected from exam page
             const examResult = sessionStorage.getItem('examResult');
             if (examResult) {
-                const result = JSON.parse(examResult);
-                if (result.applicationId === userApplication.applicationId) {
-                    // Update application with exam results
-                    userApplication.exam = {
-                        taken: true,
-                        score: result.score,
-                        passed: result.passed,
-                        dateTaken: result.dateTaken,
-                        maxScore: 100,
-                        passingScore: 75
-                    };
-                    
-                    // Update status to "pending" after all requirements are met
-                    userApplication.status = 'pending';
-                    
-                    // Add to timeline
-                    addTimelineEvent(`Exam taken - Score: ${result.score}% (${result.passed ? 'Passed' : 'Not passed'})`);
-                    addTimelineEvent('Application complete - Submitted for admin review');
-                    
-                    saveUserData();
-                    updateDashboard();
-                    
-                    // Clear the exam result from session storage
-                    sessionStorage.removeItem('examResult');
-                    
-                    // Show success message
-                    alert(`Exam completed! Your application is now complete and submitted for admin review.`);
-                    
-                    // Switch to status section
-                    showSection('status');
+                try {
+                    const result = JSON.parse(examResult);
+
+                    // Verify this is for the current user's application
+                    if (result.applicationId === userApplication.applicationId) {
+                        // Update application with exam results
+                        userApplication.exam = {
+                            taken: true,
+                            score: result.score,
+                            passed: result.passed,
+                            dateTaken: result.dateTaken,
+                            maxScore: 100,
+                            passingScore: 75
+                        };
+
+                        // Update status to "pending" after all requirements are met
+                        userApplication.status = 'pending';
+
+                        // Add to timeline
+                        addTimelineEvent(`Exam taken - Score: ${result.score}% (${result.passed ? 'Passed' : 'Not passed'})`);
+                        addTimelineEvent('Application complete - Submitted for admin review');
+
+                        saveUserData();
+                        updateDashboard();
+
+                        // Clear the exam result from session storage
+                        sessionStorage.removeItem('examResult');
+
+                        // Show success message
+                        alert(`Exam completed! Your application is now complete and submitted for admin review.`);
+
+                        // Auto-update status section
+                        if (currentSection !== 'status') {
+                            showSection('status');
+                        } else {
+                            loadStatusSection();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error processing exam result:', error);
                 }
             }
-            
+
             // Check for admin updates
             checkForAdminUpdates();
+        }
+
+        function canRetakeExam() {
+            if (!userApplication.exam.taken) return true;
+
+            // Check if 7 days have passed since last exam
+            const lastExamDate = new Date(userApplication.exam.dateTaken);
+            const now = new Date();
+            const daysPassed = (now - lastExamDate) / (1000 * 60 * 60 * 24);
+
+            return daysPassed >= 7;
         }
 
         function checkForAdminUpdates() {
@@ -2512,8 +2861,14 @@
             if (userApplication && userApplication.adminReview && userApplication.adminReview.decision) {
                 if (userApplication.adminReview.decision === 'accepted' || userApplication.adminReview.decision === 'rejected') {
                     userApplication.status = userApplication.adminReview.decision;
+                    addTimelineEvent(`Application ${userApplication.adminReview.decision} by admin`);
                     saveUserData();
                     updateDashboard();
+                    
+                    // Auto-update status section if it's currently visible
+                    if (currentSection === 'status') {
+                        loadStatusSection();
+                    }
                 }
             }
         }

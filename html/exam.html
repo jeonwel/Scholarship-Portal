@@ -206,24 +206,34 @@
         .hidden {
             display: none;
         }
+        
+        /* Additional styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Basic Knowledge Exam</h1>
+            <h1>TESDA: ACLC Scholarship Qualification Exam</h1>
             <div class="timer" id="timer">5:00</div>
         </div>
 
         <div class="content">
             <!-- Start Screen -->
             <div class="start-screen" id="startScreen">
-                <h2>Welcome to the Basic Knowledge Test</h2>
+                <h2>Welcome to the Scholarship Qualification Exam</h2>
                 <ul>
                     <li>Total Questions: 16</li>
                     <li>Time Limit: 5 minutes</li>
                     <li>Each question has 4 options</li>
                     <li>Select one answer per question</li>
+                    <li>Passing Score: 75% or higher</li>
                 </ul>
                 <button class="btn" onclick="startExam()">Start Exam</button>
             </div>
@@ -247,7 +257,7 @@
                 <h2>Exam Completed!</h2>
                 <div class="score" id="score"></div>
                 <div class="score-details" id="scoreDetails"></div>
-                <p style="margin-top: 20px; color: #6c757d;">You can retake this exam in 7 days.</p>
+                <p style="margin-top: 20px; color: #6c757d;">You can retake this exam in 7 days if needed.</p>
             </div>
 
             <!-- Locked Screen -->
@@ -260,6 +270,7 @@
                     <div class="countdown-time" id="countdownTime"></div>
                 </div>
                 <div class="score-details" id="lastScore"></div>
+                <button class="btn" style="margin-top: 20px;" onclick="returnToDashboard()">Return to Dashboard</button>
             </div>
         </div>
     </div>
@@ -420,7 +431,7 @@
         let timerInterval;
         let timeLeft = 300; // 5 minutes in seconds
         const RESET_DAYS = 7;
-        const STORAGE_KEY = 'examData';
+        let currentUser = null;
 
         // Parse XML data
         function parseXML() {
@@ -446,21 +457,109 @@
             }
         }
 
-        // Check if exam is available
-        function checkExamAvailability() {
-            const examData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-            
-            if (examData.completedAt) {
-                const completedDate = new Date(examData.completedAt);
-                const now = new Date();
-                const daysPassed = (now - completedDate) / (1000 * 60 * 60 * 24);
+        // Get current logged-in user
+        function getCurrentUser() {
+            try {
+                // Get username from session storage
+                const username = sessionStorage.getItem('username');
+                if (!username) {
+                    console.error('No user logged in');
+                    return null;
+                }
+
+                // Load user from localStorage
+                const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                const user = users.find(u => u.account?.username === username);
                 
-                if (daysPassed < RESET_DAYS) {
-                    showLockedScreen(completedDate, examData);
+                if (!user) {
+                    console.error('User not found in registeredUsers');
+                    return null;
+                }
+                
+                return user;
+            } catch (error) {
+                console.error('Error getting current user:', error);
+                return null;
+            }
+        }
+
+        // Get user-specific exam data
+        function getUserExamData() {
+            try {
+                const username = sessionStorage.getItem('username');
+                if (!username) {
+                    console.error('No username in sessionStorage');
+                    return null;
+                }
+                
+                // Load exam data from localStorage
+                const examData = JSON.parse(localStorage.getItem('userExamData') || '{}');
+                return examData[username] || null;
+            } catch (error) {
+                console.error('Error getting user exam data:', error);
+                return null;
+            }
+        }
+
+        // Save user-specific exam data
+        function saveUserExamData(examData) {
+            try {
+                const username = sessionStorage.getItem('username');
+                if (!username) {
+                    console.error('No username in sessionStorage');
                     return false;
                 }
+                
+                // Load existing exam data
+                const allExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
+                
+                // Update this user's exam data
+                allExamData[username] = examData;
+                
+                // Save back to localStorage
+                localStorage.setItem('userExamData', JSON.stringify(allExamData));
+                return true;
+            } catch (error) {
+                console.error('Error saving user exam data:', error);
+                return false;
             }
-            return true;
+        }
+
+        // Check if exam is available for current user
+        function checkExamAvailability() {
+            try {
+                // Check if user is logged in
+                const username = sessionStorage.getItem('username');
+                if (!username) {
+                    alert('Please login first to take the exam.');
+                    window.location.href = 'login.html';
+                    return false;
+                }
+
+                // Get user's exam data
+                const userExamData = getUserExamData();
+                
+                if (!userExamData) {
+                    // User hasn't taken exam yet
+                    return true;
+                }
+
+                // Check if 7 days have passed since last exam
+                if (userExamData.completedAt) {
+                    const completedDate = new Date(userExamData.completedAt);
+                    const now = new Date();
+                    const daysPassed = (now - completedDate) / (1000 * 60 * 60 * 24);
+                    
+                    if (daysPassed < RESET_DAYS) {
+                        showLockedScreen(completedDate, userExamData);
+                        return false;
+                    }
+                }
+                return true;
+            } catch (error) {
+                console.error('Error checking exam availability:', error);
+                return true; // Allow exam by default if error
+            }
         }
 
         function showLockedScreen(completedDate, examData) {
@@ -472,6 +571,7 @@
                 document.getElementById('lastScore').innerHTML = `
                     <h3>Your Last Score: ${examData.score.percentage}%</h3>
                     <p>Correct Answers: ${examData.score.correct} / ${examData.score.total}</p>
+                    <p>Date Taken: ${new Date(examData.completedAt).toLocaleDateString()}</p>
                 `;
             }
             
@@ -501,15 +601,27 @@
         }
 
         function saveExamCompletion(correct, total, percentage) {
-            const examData = {
-                completedAt: new Date().toISOString(),
-                score: {
-                    correct: correct,
-                    total: total,
-                    percentage: percentage
+            try {
+                const username = sessionStorage.getItem('username');
+                if (!username) {
+                    console.error('No username found for saving exam completion');
+                    return false;
                 }
-            };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(examData));
+
+                const examData = {
+                    completedAt: new Date().toISOString(),
+                    score: {
+                        correct: correct,
+                        total: total,
+                        percentage: percentage
+                    }
+                };
+                
+                return saveUserExamData(examData);
+            } catch (error) {
+                console.error('Error saving exam completion:', error);
+                return false;
+            }
         }
 
         function startExam() {
@@ -611,8 +723,11 @@
             const percentage = ((correct / questions.length) * 100).toFixed(1);
             const passed = percentage >= 75;
             
-            // Save exam completion with score
+            // Save exam completion with score (user-specific)
             saveExamCompletion(correct, questions.length, percentage);
+            
+            // Also save exam result to the user's application data
+            saveExamToUserApplication(percentage, passed, correct, questions.length);
             
             // Save exam result to session storage for dashboard
             const examResult = {
@@ -640,6 +755,54 @@
             `;
         }
         
+        function saveExamToUserApplication(percentage, passed, correct, total) {
+            try {
+                const username = sessionStorage.getItem('username');
+                if (!username) return false;
+                
+                // Get current user data
+                const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                const userIndex = users.findIndex(u => u.account?.username === username);
+                
+                if (userIndex === -1) return false;
+                
+                // Find active application
+                const currentUser = users[userIndex];
+                if (!currentUser.applications || currentUser.applications.length === 0) return false;
+                
+                const activeApplication = currentUser.applications.find(app => 
+                    app.status && app.status !== 'cancelled' && !app.status.includes('rejected')
+                );
+                
+                if (activeApplication) {
+                    // Update exam data in application
+                    activeApplication.exam = {
+                        taken: true,
+                        score: parseFloat(percentage),
+                        passed: passed,
+                        dateTaken: new Date().toISOString(),
+                        maxScore: 100,
+                        passingScore: 75,
+                        details: {
+                            correct: correct,
+                            total: total,
+                            percentage: percentage
+                        }
+                    };
+                    
+                    // Save updated user data
+                    localStorage.setItem('registeredUsers', JSON.stringify(users));
+                    console.log('Exam saved to user application');
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error saving exam to user application:', error);
+                return false;
+            }
+        }
+        
         function returnToDashboard() {
             window.location.href = 'student-dashboard.html';
         }
@@ -655,6 +818,16 @@
         
         // Check exam availability on page load
         window.onload = function() {
+            // Check if user is logged in
+            const isLoggedIn = sessionStorage.getItem('isLoggedIn');
+            const userType = sessionStorage.getItem('userType');
+            
+            if (isLoggedIn !== 'true' || userType !== 'student') {
+                alert('Please login as a student to take the exam.');
+                window.location.href = 'login.html';
+                return;
+            }
+            
             checkExamAvailability();
         };
     </script>
