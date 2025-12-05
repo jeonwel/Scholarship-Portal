@@ -1005,6 +1005,30 @@
                 document.getElementById('loginForm').dispatchEvent(new Event('submit'));
             }
         };
+
+        // Add these encryption functions to your login.html
+        function decryptPassword(encryptedPassword) {
+            try {
+                let decrypted = encryptedPassword.split('').map(char => {
+                    return String.fromCharCode(char.charCodeAt(0) - 5);
+                }).join('');
+                decrypted = atob(decrypted);
+                return decrypted;
+            } catch (error) {
+                return null;
+            }
+        }
+        
+        function verifyPassword(inputPassword, storedEncryptedPassword) {
+            const decryptedPassword = decryptPassword(storedEncryptedPassword);
+            return inputPassword === decryptedPassword;
+        }
+        
+        // In your login function:
+        const user = users.find(u => u.account.username === usernameInput);
+        if (verifyPassword(passwordInput, user.account.password)) {
+            // Login successful!
+        }
     </script>
     
 </body>
