@@ -1067,3 +1067,363 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* ===== FIXED STYLES FOR DOCUMENTS SECTION ===== */
+
+/* Small change picture button */
+.btn-change-picture {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: auto;
+    min-width: 120px;
+    text-align: center;
+    display: inline-block;
+    margin: 10px 0;
+}
+
+.btn-change-picture:hover {
+    background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(30, 60, 114, 0.2);
+}
+
+/* Remove duplicate preview styling */
+.document-card .document-card {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+
+/* Fix for picture preview container */
+#preview_picture {
+    margin: 20px 0;
+    text-align: center;
+}
+
+/* Fix for change button alignment */
+.document-card > div:last-child {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Hide filename display for uploaded pictures */
+.document-card.uploaded .file-preview,
+.document-card.uploaded .file-info,
+.document-card.uploaded .file-name,
+.document-card.uploaded .file-size {
+    display: none !important;
+}
+
+/* Simplified upload area for pictures when already uploaded */
+.document-card.uploaded .upload-area {
+    display: none;
+}
+
+/* Status text for uploaded files */
+.document-card.uploaded .document-status {
+    background: #e8f5e9;
+    color: var(--success);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+}
+
+/* Fix for multiple previews issue */
+.document-card .document-card {
+    display: none;
+}
+
+/* Make sure only one preview shows */
+.document-card > img,
+.document-card > div > img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 10px auto;
+    display: block;
+}
+
+/* Remove duplicate buttons */
+.btn-remove + .btn-remove {
+    display: none;
+}
+
+/* Fix for picture card layout */
+.document-card:has(#preview_picture) {
+    text-align: center;
+}
+
+.document-card:has(#preview_picture) .document-header {
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+
+/* Clean up the layout for picture upload */
+.document-card:has(#preview_picture) > div:not(.document-header) {
+    margin-top: 15px;
+}
+
+/* Ensure submit button is properly styled */
+#submitDocumentsBtn {
+    margin: 20px auto;
+    display: block;
+    max-width: 300px;
+}
+
+/* Fix for uploaded state */
+.document-card.uploaded {
+    border: 2px solid var(--success);
+}
+
+.document-card.uploaded .document-status {
+    background: #e8f5e9;
+    color: var(--success);
+}
+
+/* Animation for upload notification */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.upload-notification {
+    animation: slideIn 0.3s ease-out;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .btn-change-picture {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-width: 100px;
+    }
+    
+    #preview_picture img {
+        width: 150px;
+        height: 150px;
+    }
+}
+
+/* Remove any duplicate preview containers */
+.document-card .document-card,
+.document-card .file-preview ~ .file-preview {
+    display: none;
+}
+
+/* Ensure only the main elements show for picture documents */
+.document-card#pictureCard .file-info,
+.document-card#pictureCard .file-name,
+.document-card#pictureCard .file-size,
+.document-card#pictureCard .btn-remove {
+    display: none;
+}
+
+/* Simplified picture preview layout */
+.picture-preview-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.picture-preview-container img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 5px;
+    border: 3px solid var(--primary-blue);
+    background: white;
+    padding: 5px;
+}
+
+/* Status message for uploaded picture */
+.upload-status {
+    font-size: 12px;
+    color: var(--medium-gray);
+    margin-top: 5px;
+    text-align: center;
+}
+
+/* Hide all file info and previews for uploaded state */
+.document-card.uploaded .file-preview,
+.document-card.uploaded .file-info,
+.document-card.uploaded .file-name,
+.document-card.uploaded .file-size,
+.document-card.uploaded .btn-remove {
+    display: none !important;
+}
+
+/* Show only the picture and change button */
+.document-card.uploaded #preview_picture,
+.document-card.uploaded .btn-change-picture,
+.document-card.uploaded .upload-status {
+    display: block;
+}
+
+/* Add these styles to your existing CSS */
+
+/* Document card rejected state */
+.document-card.rejected {
+    border-color: var(--danger);
+    background: rgba(229, 57, 53, 0.08);
+    animation: pulse 2s infinite;
+}
+
+/* Status for rejected documents */
+.status-required {
+    background: #ffebee;
+    color: var(--danger);
+}
+
+/* Admin note styling */
+.admin-note {
+    background: var(--light-blue);
+    border-left: 4px solid var(--primary-blue);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.admin-note-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.admin-note-header h3 {
+    color: var(--primary-blue);
+    margin: 0;
+}
+
+.admin-note-content {
+    color: var(--dark-gray);
+}
+
+.admin-note-content ul {
+    padding-left: 20px;
+    margin: 10px 0;
+}
+
+.admin-note-content li {
+    margin-bottom: 5px;
+}
+
+.note-important {
+    background: rgba(255, 193, 7, 0.1);
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 3px solid #ff9800;
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+/* Upload notification */
+.upload-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-blue);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1000;
+    max-width: 300px;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Document preview styles */
+.document-preview-container {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.document-preview-image {
+    max-width: 200px;
+    max-height: 200px;
+    border-radius: 5px;
+    border: 2px solid #ddd;
+    margin: 0 auto;
+    display: block;
+}
+
+/* Button for changing documents */
+.btn-change-picture {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: auto;
+    min-width: 120px;
+    text-align: center;
+    display: inline-block;
+    margin: 10px 0;
+}
+
+.btn-change-picture:hover {
+    background: linear-gradient(135deg, var(--secondary-blue) 0%, var(--primary-blue) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(30, 60, 114, 0.2);
+}
+
+/* Missing documents warning */
+#missingDocuments {
+    background: #fff3e0;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #ff9800;
+    margin-top: 15px;
+}
+
+/* Rejected documents info */
+#rejectedDocumentsInfo {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 3px 8px;
+    background: #ffebee;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Progress bar for documents */
+.progress-circle {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+#circlePath {
+    stroke-dasharray: 0, 100;
+    transition: stroke-dasharray 0.5s ease;
+}

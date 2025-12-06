@@ -79,10 +79,6 @@
                         <h1>Admin Dashboard</h1>
                         <p>Manage scholarship applications and system settings</p>
                     </div>
-                    <div class="search-bar">
-                        <span class="search-icon">🔍</span>
-                        <input type="text" class="search-input" placeholder="Search applications..." id="globalSearch">
-                    </div>
                 </div>
 
                 <!-- Statistics -->
@@ -95,7 +91,7 @@
                     <div class="stat-card">
                         <div class="stat-icon">⏳</div>
                         <div class="stat-number" id="pendingReview">0</div>
-                        <div class="stat-label">Pending Review</div>
+                        <div class="stat-label">Waiting Review</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">✅</div>
@@ -123,6 +119,7 @@
                                 <th>Program</th>
                                 <th>Date Applied</th>
                                 <th>Status</th>
+                                <th>Interview Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -146,36 +143,26 @@
                     </div>
                 </div>
 
-                <!-- Filters -->
+                <!-- Simplified Filters - UPDATED: Removed redundant search -->
                 <div class="filter-container">
                     <div class="filter-row">
-                        <div class="filter-group">
-                            <label>Program</label>
-                            <select class="filter-control" id="filterProgram">
-                                <option value="">All Programs</option>
-                                <option value="wadt">Web Development (WADT)</option>
-                                <option value="hrt">Hotel & Restaurant (HRT)</option>
-                            </select>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%; justify-content: center;">
+                            <button class="btn-filter" onclick="sortApplicants('all')" style="background: var(--primary-blue);">
+                                All Applicants
+                            </button>
+                            <button class="btn-filter" onclick="sortApplicants('approved')" style="background: var(--success);">
+                                Approved Only
+                            </button>
+                            <button class="btn-filter" onclick="sortApplicants('rejected')" style="background: var(--danger);">
+                                Rejected Only
+                            </button>
+                            <button class="btn-filter" onclick="sortApplicants('waiting')" style="background: var(--warning);">
+                                Waiting Review
+                            </button>
+                            <button class="btn-filter" onclick="clearFilters()" style="background: var(--medium-gray);">
+                                Clear Filters
+                            </button>
                         </div>
-                        <div class="filter-group">
-                            <label>Status</label>
-                            <select class="filter-control" id="filterStatus">
-                                <option value="">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="under-review">Under Review</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                        <div class="filter-group">
-                            <label>Date Range</label>
-                            <input type="date" class="filter-control" id="filterDateFrom">
-                        </div>
-                        <div class="filter-group">
-                            <label>To</label>
-                            <input type="date" class="filter-control" id="filterDateTo">
-                        </div>
-                        <button class="btn-filter" onclick="filterApplicants()">Apply Filters</button>
                     </div>
                 </div>
 
@@ -192,6 +179,7 @@
                                 <th>Documents</th>
                                 <th>Exam Score</th>
                                 <th>Status</th>
+                                <th>Interview Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -229,14 +217,14 @@
                 </div>
             </div>
 
-            <!-- Exam Results -->
+            <!-- Exam Results - UPDATED -->
             <div id="examSection" class="content-section" style="display: none;">
                 <div class="content-header">
                     <h1>Exam Results</h1>
                     <p>View and evaluate applicant exam scores</p>
                 </div>
 
-                <!-- Exam Results Table -->
+                <!-- Exam Results Table - REMOVED Time Spent column -->
                 <div class="table-container">
                     <table id="examResultsTable">
                         <thead>
@@ -268,10 +256,6 @@
                             <div class="stat-label">Pass Rate</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number" id="avgScore">0</div>
-                            <div class="stat-label">Average Score</div>
-                        </div>
-                        <div class="stat-card">
                             <div class="stat-number" id="topScore">0</div>
                             <div class="stat-label">Top Score</div>
                         </div>
@@ -287,118 +271,14 @@
                 </div>
 
                 <!-- Programs List -->
-                <div class="programs-management">
-                    <div class="program-card">
-                        <div class="program-header">
-                            <h3>Web Application Development Training (WADT)</h3>
-                            <div class="program-actions">
-                                <button class="btn-icon btn-edit" onclick="editProgram('wadt')" title="Edit Program">✏️</button>
-                            </div>
-                        </div>
-                        <div class="program-info">
-                            <div class="info-item">
-                                <div class="info-label">Program Code</div>
-                                <div class="info-value">WADT-2024</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Duration</div>
-                                <div class="info-value">6 Months</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Available Slots</div>
-                                <div class="info-value">45/50</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Passing Score</div>
-                                <div class="info-value">75%</div>
-                            </div>
-                        </div>
-                        <div class="program-info">
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Description</div>
-                                <div class="info-value">Full-stack web development training program covering frontend and backend technologies.</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="program-card">
-                        <div class="program-header">
-                            <h3>Hotel & Restaurant Technology (HRT)</h3>
-                            <div class="program-actions">
-                                <button class="btn-icon btn-edit" onclick="editProgram('hrt')" title="Edit Program">✏️</button>
-                            </div>
-                        </div>
-                        <div class="program-info">
-                            <div class="info-item">
-                                <div class="info-label">Program Code</div>
-                                <div class="info-value">HRT-2024</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Duration</div>
-                                <div class="info-value">6 Months</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Available Slots</div>
-                                <div class="info-value">38/50</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Passing Score</div>
-                                <div class="info-value">75%</div>
-                            </div>
-                        </div>
-                        <div class="program-info">
-                            <div class="info-item" style="grid-column: 1 / -1;">
-                                <div class="info-label">Description</div>
-                                <div class="info-value">Hospitality management program focusing on hotel and restaurant operations.</div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="programs-management" id="programsList">
+                    <!-- Programs will be loaded dynamically -->
                 </div>
             </div>
 
-            <!-- Reports & Analytics -->
+            <!-- Reports & Analytics - UPDATED -->
             <div id="reportsSection" class="content-section" style="display: none;">
-                <div class="content-header">
-                    <h1>Reports & Analytics</h1>
-                    <p>Generate and view system reports</p>
-                </div>
-
-                <!-- Reports Grid -->
-                <div class="reports-grid">
-                    <div class="report-card" onclick="generateReport('applicantsPerProgram')">
-                        <div class="report-icon">📊</div>
-                        <h4>Applicants Per Program</h4>
-                        <p>View total applicants per scholarship program</p>
-                    </div>
-                    <div class="report-card" onclick="generateReport('applicationStatus')">
-                        <div class="report-icon">📈</div>
-                        <h4>Application Status Report</h4>
-                        <p>Breakdown of applications by status</p>
-                    </div>
-                    <div class="report-card" onclick="generateReport('examPerformance')">
-                        <div class="report-icon">💯</div>
-                        <h4>Exam Performance Report</h4>
-                        <p>Analyze exam scores and pass rates</p>
-                    </div>
-                    <div class="report-card" onclick="generateReport('documentStatus')">
-                        <div class="report-icon">📄</div>
-                        <h4>Document Status Report</h4>
-                        <p>Overview of document verification status</p>
-                    </div>
-                </div>
-
-                <!-- Export Options -->
-                <div class="export-buttons">
-                    <button class="btn-export" onclick="exportReport('pdf')">
-                        <span>📄</span> Export as PDF
-                    </button>
-                    <button class="btn-export" onclick="exportReport('excel')">
-                        <span>📊</span> Export as Excel
-                    </button>
-                    <button class="btn-export" onclick="exportReport('csv')">
-                        <span>📋</span> Export as CSV
-                    </button>
-                </div>
+                <!-- Reports content will be loaded dynamically -->
             </div>
         </main>
     </div>
@@ -433,6 +313,94 @@
         </div>
     </div>
 
+    <!-- Interview Status Modal -->
+    <div class="modal-overlay" id="interviewModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Update Interview Status</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="interviewDetails">
+                    <div class="filter-group">
+                        <label>Interview Status</label>
+                        <select class="filter-control" id="interviewStatusSelect">
+                            <option value="not-scheduled">Not Scheduled</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="passed">Passed</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Interview Date</label>
+                        <input type="datetime-local" class="filter-control" id="interviewDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>Notes</label>
+                        <textarea class="filter-control" id="interviewNotes" rows="3" placeholder="Add interview notes..."></textarea>
+                    </div>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn-filter" onclick="saveInterviewStatus()" style="background: var(--success);">
+                            Save Changes
+                        </button>
+                        <button class="btn-filter" onclick="closeModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Program Edit Modal -->
+    <div class="modal-overlay" id="programModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="programModalTitle">Edit Program</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="programEditForm">
+                    <div class="filter-group">
+                        <label>Program Name</label>
+                        <input type="text" class="filter-control" id="programName" required>
+                    </div>
+                    <div class="filter-group">
+                        <label>Program Code</label>
+                        <input type="text" class="filter-control" id="programCode" required>
+                    </div>
+                    <div class="filter-group">
+                        <label>Total Slots</label>
+                        <input type="number" class="filter-control" id="totalSlots" min="1" required>
+                    </div>
+                    <div class="filter-group">
+                        <label>Duration (Years)</label>
+                        <input type="number" class="filter-control" id="programDuration" min="1" max="5" value="3" required>
+                    </div>
+                    <div class="filter-group">
+                        <label>Passing Score (%)</label>
+                        <input type="number" class="filter-control" id="passingScore" min="1" max="100" required>
+                    </div>
+                    <div class="filter-group">
+                        <label>Description</label>
+                        <textarea class="filter-control" id="programDescription" rows="3" required></textarea>
+                    </div>
+                    <input type="hidden" id="programId">
+                    <div style="text-align: center; margin-top: 20px;">
+                        <button class="btn-filter" onclick="saveProgram()" style="background: var(--success);">
+                            Save Program
+                        </button>
+                        <button class="btn-filter" onclick="closeModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal (Dynamically created) -->
     <script src="../js/admin-dashboard.js"></script>
 </body>
 </html>

@@ -178,14 +178,19 @@ function proceedToStep2() {
     let userFound = false;
     
     if (forgotUserType === 'admin') {
-        const admins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-        const admin = admins.find(a => a.username === username);
+        // For admin accounts, we use session-based authentication only
+        // Check for special admin accounts
+        const specialAdmins = ['admin', 'administrator', 'superadmin'];
+        const isSpecialAdmin = specialAdmins.includes(username.toLowerCase());
         
-        if (admin) {
+        if (isSpecialAdmin) {
             if (confirm('For security reasons, admin password reset must be done by system administrator.\n\nDo you want to continue?')) {
                 userFound = true;
-                currentUserForReset = admin;
-                originalPasswordForReset = admin.password;
+                currentUserForReset = {
+                    username: username,
+                    isAdmin: true
+                };
+                originalPasswordForReset = 'admin123'; // Default admin password
                 
                 document.getElementById('securityQuestionDisplay').innerHTML = `
                     <div style="color: #e53935;">
@@ -244,6 +249,22 @@ function verifySecurityAnswer() {
         return;
     }
     
+    // Check if it's a special admin account
+    if (currentUserForReset.isAdmin) {
+        // For admin accounts, the default answer is "admin123"
+        const correctAnswer = 'admin123';
+        const userAnswer = answer.toLowerCase();
+        
+        if (userAnswer !== correctAnswer) {
+            showError('securityAnswerError', 'Incorrect answer. Please try again.');
+            return;
+        }
+        
+        showStep(3);
+        return;
+    }
+    
+    // Regular student account verification
     const correctAnswer = currentUserForReset.account.securityAnswer.toLowerCase();
     const userAnswer = answer.toLowerCase();
     
@@ -350,7 +371,7 @@ function resetPassword() {
         setTimeout(() => {
             if (confirm('That is your current password. Do you want to use it to login now?')) {
                 document.getElementById('username').value = 
-                    currentUserForReset.account?.username || currentUserForReset.username;
+                    currentUserForReset.username || currentUserForReset.account?.username;
                 document.getElementById('password').value = newPassword;
                 selectUserType(forgotUserType);
                 closeForgotPasswordModal();
@@ -363,18 +384,8 @@ function resetPassword() {
     
     if (!isValid) return;
     
-    // Update password in localStorage
-    if (forgotUserType === 'admin') {
-        const admins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
-        const adminIndex = admins.findIndex(a => 
-            a.username === (currentUserForReset.username || currentUserForReset.account?.username)
-        );
-        
-        if (adminIndex !== -1) {
-            admins[adminIndex].password = newPassword;
-            localStorage.setItem('adminUsers', JSON.stringify(admins));
-        }
-    } else {
+    // Update password in localStorage (for student accounts only)
+    if (forgotUserType === 'student') {
         const registeredUsers = getRegisteredUsers();
         const userIndex = registeredUsers.findIndex(u => 
             u.account?.username === currentUserForReset.account?.username
@@ -385,17 +396,19 @@ function resetPassword() {
             localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
         }
     }
+    // For admin accounts, we don't store passwords in localStorage
     
     // Clear remembered user if it's the same user
     if (rememberedCredentials && 
-        rememberedCredentials.username === (currentUserForReset.account?.username || currentUserForReset.username)) {
+        rememberedCredentials.username === (currentUserForReset.username || currentUserForReset.account?.username)) {
         clearRememberedUser();
     }
     
     // Show success message
     document.getElementById('successMessage').innerHTML = `
         Your password has been successfully reset.<br><br>
-        <strong>Username:</strong> ${currentUserForReset.account?.username || currentUserForReset.username}<br>
+        <strong>Username:</strong> ${currentUserForReset.username || currentUserForReset.account?.username || 'N/A'}<br>
+        <strong>Account Type:</strong> ${forgotUserType}<br>
         <strong>New Password:</strong> ${'•'.repeat(newPassword.length)}
     `;
     
@@ -404,7 +417,7 @@ function resetPassword() {
 
 function completePasswordReset() {
     document.getElementById('username').value = 
-        currentUserForReset.account?.username || currentUserForReset.username;
+        currentUserForReset.username || currentUserForReset.account?.username || '';
     document.getElementById('password').value = document.getElementById('newPassword').value;
     
     selectUserType(forgotUserType);
@@ -421,40 +434,24 @@ function completePasswordReset() {
 // ===== AUTHENTICATION SYSTEM =====
 function authenticateUser(username, password, userType) {
     if (userType === 'admin') {
-        const storedAdmins = JSON.parse(localStorage.getItem('adminUsers') || '[]');
+        // Check for special admin accounts - NO localStorage storage
+        const specialAdmins = ['admin', 'administrator', 'superadmin'];
         
-        if (storedAdmins.length === 0) {
-            const defaultAdmins = [
-                { 
-                    username: 'admin', 
-                    password: 'admin123', 
+        // Check if it's a special admin account
+        const isSpecialAdmin = specialAdmins.includes(username.toLowerCase());
+        
+        if (isSpecialAdmin) {
+            if (password === 'admin123') {
+                const adminData = {
+                    username: username,
                     userType: 'admin',
-                    fullName: 'System Administrator',
-                    role: 'Super Admin'
-                }
-            ];
-            localStorage.setItem('adminUsers', JSON.stringify(defaultAdmins));
-            
-            const admin = defaultAdmins.find(user => 
-                user.username === username && user.password === password
-            );
-            
-            if (admin) {
-                return { 
-                    success: true, 
-                    user: admin,
-                    shouldSaveCredentials: document.getElementById('rememberMe').checked
+                    fullName: username === 'admin' ? 'System Administrator' : username,
+                    role: username === 'admin' ? 'Super Admin' : 'Administrator'
                 };
-            }
-        } else {
-            const admin = storedAdmins.find(user => 
-                user.username === username && user.password === password
-            );
-            
-            if (admin) {
+                
                 return { 
                     success: true, 
-                    user: admin,
+                    user: adminData,
                     shouldSaveCredentials: document.getElementById('rememberMe').checked
                 };
             }
@@ -463,6 +460,7 @@ function authenticateUser(username, password, userType) {
         return { success: false, message: 'Invalid admin credentials' };
     }
     
+    // Student authentication
     const registeredUsers = getRegisteredUsers();
     
     const user = registeredUsers.find(u => {

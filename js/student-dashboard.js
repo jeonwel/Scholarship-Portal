@@ -92,7 +92,7 @@ function checkFailedAccountStatus() {
             `;
             
             // Insert at the top of the content area
-            const contentArea = document.querySelector('.content-area');
+            const contentArea = document.querySelector('.main-content');
             if (contentArea) {
                 contentArea.insertBefore(countdownElement, contentArea.firstChild);
             }
@@ -116,12 +116,12 @@ function loadOrCreateApplication() {
             status: 'not-started',
             submittedDate: null,
             documents: {
-                picture: { uploaded: false, filename: null, verified: false, type: '2x2 ID Picture', dataUrl: null },
-                birthcert: { uploaded: false, filename: null, verified: false, type: 'Birth Certificate', dataUrl: null },
-                reportcard: { uploaded: false, filename: null, verified: false, type: 'Report Card', dataUrl: null },
-                goodmoral: { uploaded: false, filename: null, verified: false, type: 'Certificate of Good Moral Character', dataUrl: null },
-                tor: { uploaded: false, filename: null, verified: false, type: 'Transcript of Records (TOR)', dataUrl: null },
-                diploma: { uploaded: false, filename: null, verified: false, type: 'High School Diploma', dataUrl: null }
+                picture: { uploaded: false, filename: null, verified: false, type: '2x2 ID Picture', dataUrl: null, rejected: false, adminNote: '' },
+                birthcert: { uploaded: false, filename: null, verified: false, type: 'Birth Certificate', dataUrl: null, rejected: false, adminNote: '' },
+                reportcard: { uploaded: false, filename: null, verified: false, type: 'Report Card', dataUrl: null, rejected: false, adminNote: '' },
+                goodmoral: { uploaded: false, filename: null, verified: false, type: 'Certificate of Good Moral Character', dataUrl: null, rejected: false, adminNote: '' },
+                tor: { uploaded: false, filename: null, verified: false, type: 'Transcript of Records (TOR)', dataUrl: null, rejected: false, adminNote: '' },
+                diploma: { uploaded: false, filename: null, verified: false, type: 'High School Diploma', dataUrl: null, rejected: false, adminNote: '' }
             },
             exam: {
                 taken: false,
@@ -142,6 +142,29 @@ function loadOrCreateApplication() {
         
         currentUser.applications.push(userApplication);
         saveUserData();
+    }
+    
+    // Check if application is rejected by admin
+    if (userApplication && userApplication.status === 'rejected') {
+        // Disable document uploads
+        document.getElementById('documentsSection').innerHTML = `
+            <div class="content-header">
+                <h1>Upload Required Documents</h1>
+                <p>Application Rejected - Uploads Disabled</p>
+            </div>
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <h3 style="color: var(--danger); margin-bottom: 15px;">Application Rejected</h3>
+                <p>Your application has been rejected by the administrator.</p>
+                <div style="background: #ffebee; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
+                    <h4 style="color: var(--danger); margin-bottom: 15px;">Application Status</h4>
+                    <p><strong>Application ID:</strong> ${userApplication.applicationId}</p>
+                    <p><strong>Status:</strong> Rejected</p>
+                    <p><strong>Admin Note:</strong> ${userApplication.adminReview.notes || 'No additional notes provided.'}</p>
+                </div>
+            </div>
+        `;
+        return;
     }
 }
 
@@ -198,7 +221,7 @@ function updateProgressBar() {
         document.getElementById('step1').classList.add('completed');
         document.getElementById('step2').classList.add('active');
         
-        // Check if documents are uploaded
+        // Check if documents are uploaded (even rejected ones count as uploaded slots)
         if (allDocumentsUploaded()) {
             currentStep = 2;
             progressWidth = '50%';
@@ -279,6 +302,7 @@ function updateStatusCards() {
     if (userApplication.documents) {
         const docs = userApplication.documents;
         const uploadedDocs = Object.values(docs).filter(doc => doc.uploaded).length;
+        const rejectedDocs = Object.values(docs).filter(doc => doc.rejected).length;
         const totalDocs = Object.keys(docs).length;
         
         document.getElementById('documentsStatusText').textContent = `${uploadedDocs}/${totalDocs}`;
@@ -288,10 +312,15 @@ function updateStatusCards() {
             document.getElementById('documentsStatusDesc').textContent = 'No documents uploaded';
             document.getElementById('documentsIndicator').style.display = 'block';
             document.getElementById('documentsIndicator').textContent = '⚠️ No documents uploaded';
-        } else if (uploadedDocs === totalDocs) {
+        } else if (uploadedDocs === totalDocs && rejectedDocs === 0) {
             document.getElementById('documentsStatusText').className = 'status-value status-approved';
             document.getElementById('documentsStatusDesc').textContent = 'All documents submitted';
             document.getElementById('documentsIndicator').style.display = 'none';
+        } else if (rejectedDocs > 0) {
+            document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
+            document.getElementById('documentsStatusDesc').textContent = `${rejectedDocs} document(s) need re-upload`;
+            document.getElementById('documentsIndicator').style.display = 'block';
+            document.getElementById('documentsIndicator').textContent = `⚠️ ${rejectedDocs} document(s) rejected`;
         } else {
             document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
             document.getElementById('documentsStatusDesc').textContent = `${totalDocs - uploadedDocs} documents remaining`;
@@ -402,6 +431,9 @@ function loadProgramsSection() {
     const programsContainer = document.getElementById('programsContainer');
     const applicationForm = document.getElementById('applicationForm');
     
+    // Hide the application form (removed redundant submit button)
+    applicationForm.style.display = 'none';
+    
     // Clear existing content
     programsContainer.innerHTML = '';
     
@@ -420,7 +452,6 @@ function loadProgramsSection() {
                 </div>
             </div>
         `;
-        applicationForm.style.display = 'none';
         return;
     }
     
@@ -438,7 +469,6 @@ function loadProgramsSection() {
                 </button>
             </div>
         `;
-        applicationForm.style.display = 'none';
         return;
     }
 
@@ -488,8 +518,6 @@ function loadProgramsSection() {
         `;
         programsContainer.appendChild(programCard);
     });
-
-    applicationForm.style.display = 'none';
 }
 
 function showConfirmationModal(programId) {
@@ -515,7 +543,7 @@ function confirmProgramSelection() {
     
     // Add to timeline
     addTimelineEvent('Program selected: ' + getProgramName(programId));
-    addTimelineEvent('Application submitted for review');
+    addTimelineEvent('Application submitted successfully');
     
     saveUserData();
     updateDashboard();
@@ -523,17 +551,11 @@ function confirmProgramSelection() {
     // Hide modal
     document.getElementById('confirmationModal').style.display = 'none';
     
-    // Show application form
-    document.getElementById('applicationForm').style.display = 'block';
-    document.getElementById('selectedProgramInfo').innerHTML = `
-        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Selected Program: ${getProgramName(programId)}</h4>
-            <p>Please review your selection and submit your application.</p>
-        </div>
-    `;
+    // Show success message
+    alert('Application submitted successfully! Please proceed to upload your documents.');
     
-    // Scroll to form
-    document.getElementById('applicationForm').scrollIntoView({ behavior: 'smooth' });
+    // Switch to documents section
+    showSection('documents');
     
     // Reset pending selection
     pendingProgramSelection = null;
@@ -545,29 +567,6 @@ function cancelProgramSelection() {
     
     // Reset pending selection
     pendingProgramSelection = null;
-}
-
-function submitApplication() {
-    if (!userApplication.program) {
-        alert('Please select a program first.');
-        return;
-    }
-
-    // Update application status
-    userApplication.status = 'applied';
-    userApplication.submittedDate = new Date().toISOString();
-    
-    // Add to timeline
-    addTimelineEvent('Application submitted successfully');
-    
-    saveUserData();
-    updateDashboard();
-    
-    // Show success message
-    alert('Application submitted successfully! Please proceed to upload your documents.');
-    
-    // Switch to documents section
-    showSection('documents');
 }
 
 // ===== DOCUMENTS SECTION =====
@@ -613,6 +612,28 @@ function loadDocumentsSection() {
         `;
         return;
     }
+    
+    // Check if application is rejected by admin
+    if (userApplication.status === 'rejected') {
+        document.getElementById('documentsSection').innerHTML = `
+            <div class="content-header">
+                <h1>Upload Required Documents</h1>
+                <p>Application Rejected - Uploads Disabled</p>
+            </div>
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 48px; margin-bottom: 20px;">❌</div>
+                <h3 style="color: var(--danger); margin-bottom: 15px;">Application Rejected</h3>
+                <p>Your application has been rejected by the administrator.</p>
+                <div style="background: #ffebee; padding: 20px; border-radius: 10px; max-width: 600px; margin: 20px auto;">
+                    <h4 style="color: var(--danger); margin-bottom: 15px;">Application Status</h4>
+                    <p><strong>Application ID:</strong> ${userApplication.applicationId}</p>
+                    <p><strong>Status:</strong> Rejected</p>
+                    <p><strong>Admin Note:</strong> ${userApplication.adminReview.notes || 'No additional notes provided.'}</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
 
     updateDocumentsSummary();
     renderDocumentsList();
@@ -622,7 +643,9 @@ function updateDocumentsSummary() {
     if (!userApplication || !userApplication.documents) return;
     
     const docs = userApplication.documents;
+    // Count uploaded documents (including rejected ones as they occupy a slot)
     const uploadedDocs = Object.values(docs).filter(doc => doc.uploaded).length;
+    const rejectedDocs = Object.values(docs).filter(doc => doc.rejected).length;
     const totalDocs = Object.keys(docs).length;
     const progress = Math.round((uploadedDocs / totalDocs) * 100);
     
@@ -630,17 +653,32 @@ function updateDocumentsSummary() {
     document.getElementById('uploadedCount').textContent = uploadedDocs;
     document.getElementById('totalCount').textContent = totalDocs;
     
+    // Show rejected documents info
+    const rejectedInfo = document.getElementById('rejectedDocumentsInfo');
+    if (rejectedInfo) {
+        if (rejectedDocs > 0) {
+            rejectedInfo.textContent = `⚠️ ${rejectedDocs} document(s) rejected - please re-upload`;
+            rejectedInfo.style.display = 'block';
+        } else {
+            rejectedInfo.style.display = 'none';
+        }
+    }
+    
     // Update progress circle
     const circlePath = document.getElementById('circlePath');
     const circleText = document.getElementById('circleText');
     
-    circlePath.style.strokeDasharray = `${progress}, 100`;
-    circleText.textContent = `${progress}%`;
+    if (circlePath && circleText) {
+        circlePath.style.strokeDasharray = `${progress}, 100`;
+        circleText.textContent = `${progress}%`;
+    }
     
-    // Initially hide the missing documents section
+    // Hide missing documents section initially
     const missingDocsElement = document.getElementById('missingDocuments');
-    missingDocsElement.style.display = 'none';
-    missingDocsElement.textContent = '';
+    if (missingDocsElement) {
+        missingDocsElement.style.display = 'none';
+        missingDocsElement.textContent = '';
+    }
 }
 
 function renderDocumentsList() {
@@ -696,6 +734,7 @@ function renderDocumentsList() {
     documents.forEach(doc => {
         const docData = userApplication.documents[doc.id];
         const isUploaded = docData && docData.uploaded;
+        const isRejected = docData && docData.rejected;
         const hasPendingFile = pendingDocuments[doc.id];
         
         let cardClass = 'document-card';
@@ -705,135 +744,94 @@ function renderDocumentsList() {
             cardClass += ' required missing';
         }
         
+        if (isRejected) {
+            cardClass += ' rejected';
+        }
+        
         const documentCard = document.createElement('div');
         documentCard.className = cardClass;
+        documentCard.id = `docCard_${doc.id}`;
         
-        if (doc.id === 'picture') {
-            // Special layout for 2x2 ID Picture
-            documentCard.innerHTML = `
-                <div class="document-header">
-                    <div class="document-title">
-                        <span>${isUploaded || hasPendingFile ? '📷' : '📄'}</span>
-                        ${doc.name}
-                    </div>
-                    <div class="document-status ${isUploaded || hasPendingFile ? 'status-uploaded' : 'status-required'}">
-                        ${isUploaded ? 'Saved' : hasPendingFile ? 'Ready to Submit' : 'Required'}
-                    </div>
-                </div>
-                
-                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 15px;">${doc.description}</p>
-                
-                ${isUploaded || hasPendingFile ? `
-                <div style="text-align: center; margin: 20px 0;">
-                    ${getPicturePreview(isUploaded ? docData.dataUrl : pendingDocuments[doc.id]?.dataUrl, doc.name)}
-                </div>
-                
-                <div class="upload-area" onclick="document.getElementById('fileInput_${doc.id}').click()">
-                    <div class="upload-icon">📤</div>
-                    <div class="upload-text">
-                        <h4>Change File</h4>
-                        <p>Click to upload or drag and drop</p>
-                        <p style="font-size: 12px;">Max file size: 5MB • ${doc.accept}</p>
-                    </div>
-                </div>
-                
-                <div class="file-preview" style="margin-top: 15px;">
-                    <div class="file-info">
-                        <span>📎</span>
-                        <div>
-                            <div class="file-name">${isUploaded ? docData.filename : pendingDocuments[doc.id].name}</div>
-                            <div class="file-size">${isUploaded ? 'Saved' : 'Pending Submission'}</div>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        ${isUploaded && docData.dataUrl ? `
-                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
-                                onclick="downloadDocument('${doc.id}')">
-                            ⬇️ Download
-                        </button>
-                        ` : ''}
-                        <button class="btn-remove" onclick="removeDocument('${doc.id}')">Remove</button>
-                    </div>
-                </div>
-                ` : `
-                <div class="upload-area" onclick="document.getElementById('fileInput_${doc.id}').click()">
-                    <div class="upload-icon">📤</div>
-                    <div class="upload-text">
-                        <h4>Upload File</h4>
-                        <p>Click to upload or drag and drop</p>
-                        <p style="font-size: 12px;">Max file size: 5MB • ${doc.accept}</p>
-                    </div>
-                </div>
-                `}
-                
-                <input type="file" id="fileInput_${doc.id}" style="display: none;" 
-                       accept="${doc.accept}" onchange="handleFileUpload('${doc.id}', this)">
-            `;
-        } else {
-            // Regular layout for other documents
-            documentCard.innerHTML = `
-                <div class="document-header">
-                    <div class="document-title">
-                        <span>${isUploaded || hasPendingFile ? '📎' : '📄'}</span>
-                        ${doc.name}
-                    </div>
-                    <div class="document-status ${isUploaded || hasPendingFile ? 'status-uploaded' : 'status-required'}">
-                        ${isUploaded ? 'Saved' : hasPendingFile ? 'Ready to Submit' : 'Required'}
-                    </div>
-                </div>
-                
-                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 15px;">${doc.description}</p>
-                
-                <div class="upload-area" onclick="document.getElementById('fileInput_${doc.id}').click()">
-                    <div class="upload-icon">📤</div>
-                    <div class="upload-text">
-                        <h4>${isUploaded || hasPendingFile ? 'Change File' : 'Upload File'}</h4>
-                        <p>Click to upload or drag and drop</p>
-                        <p style="font-size: 12px;">Max file size: 5MB • ${doc.accept}</p>
-                    </div>
-                </div>
-                
-                <input type="file" id="fileInput_${doc.id}" style="display: none;" 
-                       accept="${doc.accept}" onchange="handleFileUpload('${doc.id}', this)">
-                
-                ${isUploaded || hasPendingFile ? `
-                <div class="file-preview">
-                    <div class="file-info">
-                        <span>📎</span>
-                        <div>
-                            <div class="file-name">${isUploaded ? docData.filename : pendingDocuments[doc.id].name}</div>
-                            <div class="file-size">${isUploaded ? 'Saved' : 'Pending Submission'}</div>
-                        </div>
-                    </div>
-                    ${isUploaded && docData.dataUrl ? `
-                    <div style="margin-top: 10px; text-align: center;">
-                        ${getDocumentPreview(docData.dataUrl, docData.filename)}
-                    </div>
-                    ` : ''}
-                    <div style="display: flex; gap: 10px; margin-top: 15px;">
-                        ${isUploaded && docData.dataUrl ? `
-                        <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px; flex: 1;" 
-                                onclick="downloadDocument('${doc.id}')">
-                            ⬇️ Download
-                        </button>
-                        ` : ''}
-                        <button class="btn-remove" onclick="removeDocument('${doc.id}')">Remove</button>
-                    </div>
-                </div>
-                ` : ''}
-            `;
+        // Create unique IDs for this document
+        const previewId = `preview_${doc.id}`;
+        
+        // Status message
+        let statusMessage = '';
+        let adminNote = '';
+        if (isRejected) {
+            statusMessage = '❌ Rejected - Please upload again';
+            adminNote = docData.adminNote ? `<div style="background: #ffebee; padding: 10px; border-radius: 5px; margin-top: 10px; border-left: 3px solid #f44336;">
+                <strong style="color: #d32f2f;">Admin Note:</strong> ${docData.adminNote}
+            </div>` : '';
+        } else if (isUploaded) {
+            statusMessage = '✅ Uploaded';
+        } else if (hasPendingFile) {
+            statusMessage = '📝 Ready to Submit';
         }
+        
+        // Uniform layout for ALL documents (including 2x2 picture)
+        documentCard.innerHTML = `
+            <div class="document-header">
+                <div class="document-title">
+                    <span>${doc.id === 'picture' ? (isUploaded || hasPendingFile ? '📷' : '📄') : (isUploaded || hasPendingFile ? '📎' : '📄')}</span>
+                    ${doc.name}
+                    ${isRejected ? '<span style="color: #f44336; font-size: 12px; margin-left: 8px;">(REJECTED)</span>' : ''}
+                </div>
+                <div class="document-status ${isRejected ? 'status-required' : (isUploaded || hasPendingFile ? 'status-uploaded' : 'status-required')}">
+                    ${isRejected ? 'Rejected' : (isUploaded ? 'Saved' : hasPendingFile ? 'Ready to Submit' : 'Required')}
+                </div>
+            </div>
+            
+            <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 15px;">${doc.description}</p>
+            
+            ${statusMessage ? `<div style="color: ${isRejected ? '#f44336' : (isUploaded ? '#4caf50' : '#ff9800')}; font-weight: 500; margin-bottom: 10px;">${statusMessage}</div>` : ''}
+            
+            ${adminNote}
+            
+            ${isUploaded || hasPendingFile ? `
+            <div id="${previewId}" style="text-align: center; margin: 15px 0;">
+                ${getDocumentPreview(isUploaded ? docData.dataUrl : pendingDocuments[doc.id]?.dataUrl, 
+                                  isUploaded ? docData.filename : pendingDocuments[doc.id]?.name, doc.id)}
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
+                <button class="btn-change-picture" onclick="document.getElementById('fileInput_${doc.id}').click()">
+                    ${isRejected ? 'Upload Again' : (doc.id === 'picture' ? 'Change Picture' : 'Change File')}
+                </button>
+                
+                <div style="font-size: 12px; color: var(--medium-gray); text-align: center;">
+                    ${hasPendingFile ? 'Ready to submit' : isUploaded ? (doc.id === 'picture' ? 'Picture' : 'Document') + ' uploaded ✓' : ''}
+                </div>
+            </div>
+            ` : `
+            <div class="upload-area" onclick="document.getElementById('fileInput_${doc.id}').click()">
+                <div class="upload-icon">📤</div>
+                <div class="upload-text">
+                    <h4>Upload ${doc.id === 'picture' ? 'Picture' : 'File'}</h4>
+                    <p>Click to upload or drag and drop</p>
+                    <p style="font-size: 12px;">Max file size: 5MB • ${doc.accept}</p>
+                </div>
+            </div>
+            `}
+            
+            <input type="file" id="fileInput_${doc.id}" style="display: none;" 
+                   accept="${doc.accept}" onchange="handleFileUpload('${doc.id}', this)">
+        `;
         
         documentsList.appendChild(documentCard);
     });
 
     // Update submit button state
+    updateSubmitButtonState();
+}
+
+function updateSubmitButtonState() {
     const submitBtn = document.getElementById('submitDocumentsBtn');
     const pendingCount = Object.keys(pendingDocuments).length;
     const savedCount = Object.values(userApplication.documents).filter(d => d.uploaded).length;
     const totalCount = Object.keys(userApplication.documents).length;
     
-    if (savedCount === totalCount) {
+    if (savedCount === totalCount && pendingCount === 0) {
         submitBtn.innerHTML = '✅ All Documents Submitted';
         submitBtn.disabled = true;
         submitBtn.style.background = '#cccccc';
@@ -848,11 +846,11 @@ function renderDocumentsList() {
     }
 }
 
-function getPicturePreview(dataUrl, filename) {
+function getDocumentPreview(dataUrl, filename, docId) {
     if (!dataUrl) return '';
     
-    // Larger display for 2x2 ID Picture
-    if (dataUrl.startsWith('data:image/')) {
+    // Special handling for 2x2 ID Picture
+    if (docId === 'picture' && dataUrl.startsWith('data:image/')) {
         return `
             <div style="display: inline-block; border: 3px solid var(--primary-blue); border-radius: 10px; padding: 10px; background: white;">
                 <img src="${dataUrl}" alt="${filename}" 
@@ -864,33 +862,27 @@ function getPicturePreview(dataUrl, filename) {
         `;
     }
     
-    return '';
-}
-
-function getDocumentPreview(dataUrl, filename) {
-    if (!dataUrl) return '';
-    
     // Check if it's an image
     if (dataUrl.startsWith('data:image/')) {
-        return `<img src="${dataUrl}" alt="${filename}" style="max-width: 150px; max-height: 150px; border-radius: 5px; border: 1px solid #ddd; margin: 10px auto; display: block;">`;
+        return `<img src="${dataUrl}" alt="${filename}" style="max-width: 200px; max-height: 200px; border-radius: 5px; border: 2px solid #ddd; margin: 10px auto; display: block;">`;
     }
     // Check if it's a PDF
-    else if (dataUrl.includes('pdf') || filename.toLowerCase().endsWith('.pdf')) {
+    else if (dataUrl.includes('pdf') || (filename && filename.toLowerCase().endsWith('.pdf'))) {
         return `
-            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; text-align: center; max-width: 150px; margin: 10px auto;">
-                <div style="font-size: 24px; margin-bottom: 5px;">📄</div>
-                <div style="font-weight: 600; color: var(--primary-blue); margin-bottom: 2px; font-size: 11px;">PDF Document</div>
-                <div style="font-size: 10px; color: var(--medium-gray);">Click "Download" to view</div>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; max-width: 200px; margin: 10px auto;">
+                <div style="font-size: 32px; margin-bottom: 5px;">📄</div>
+                <div style="font-weight: 600; color: var(--primary-blue); margin-bottom: 2px; font-size: 14px;">PDF Document</div>
+                <div style="font-size: 11px; color: var(--medium-gray);">${filename || 'Document'}</div>
             </div>
         `;
     }
     // For other file types
     else {
         return `
-            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; text-align: center; max-width: 150px; margin: 10px auto;">
-                <div style="font-size: 24px; margin-bottom: 5px;">📎</div>
-                <div style="font-weight: 600; color: var(--primary-blue); margin-bottom: 2px; font-size: 11px;">Document File</div>
-                <div style="font-size: 10px; color: var(--medium-gray);">Click "Download" to view</div>
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; text-align: center; max-width: 200px; margin: 10px auto;">
+                <div style="font-size: 32px; margin-bottom: 5px;">📎</div>
+                <div style="font-weight: 600; color: var(--primary-blue); margin-bottom: 2px; font-size: 14px;">Document File</div>
+                <div style="font-size: 11px; color: var(--medium-gray);">${filename || 'Document'}</div>
             </div>
         `;
     }
@@ -903,12 +895,18 @@ function handleFileUpload(docId, input) {
     // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
         alert('File size must be less than 5MB');
+        input.value = ''; // Clear the input
         return;
     }
 
     // Use FileReader to read file as data URL
     const reader = new FileReader();
     reader.onload = function(e) {
+        // Check if document was previously uploaded
+        const wasPreviouslyUploaded = userApplication.documents[docId].uploaded;
+        const wasRejected = userApplication.documents[docId].rejected;
+        const previousFilename = userApplication.documents[docId].filename;
+        
         // Store file in pendingDocuments with data URL
         pendingDocuments[docId] = {
             name: file.name,
@@ -916,11 +914,15 @@ function handleFileUpload(docId, input) {
             type: file.type,
             size: file.size,
             lastModified: file.lastModified,
-            dataUrl: e.target.result // Store the data URL for display
+            dataUrl: e.target.result, // Store the data URL for display
+            isReplacement: wasPreviouslyUploaded,
+            wasRejected: wasRejected,
+            previousFilename: previousFilename
         };
 
         // Update UI but DON'T save to userApplication yet
         renderDocumentsList();
+        updateSubmitButtonState();
         
         // Show temporary notification
         const notification = document.createElement('div');
@@ -929,26 +931,55 @@ function handleFileUpload(docId, input) {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #e3f2fd;
+            background: ${wasRejected ? '#fff3e0' : (wasPreviouslyUploaded ? '#e3f2fd' : '#e8f5e9')};
             padding: 15px;
             border-radius: 8px;
-            border-left: 4px solid var(--primary-blue);
+            border-left: 4px solid ${wasRejected ? '#ff9800' : (wasPreviouslyUploaded ? '#1976d2' : '#4caf50')};
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             z-index: 1000;
             max-width: 300px;
         `;
-        notification.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 20px;">📎</span>
-                <div>
-                    <div style="font-weight: bold;">File Ready</div>
-                    <div style="font-size: 12px; color: var(--medium-gray);">${file.name}</div>
-                    <div style="font-size: 11px; color: var(--medium-gray); margin-top: 5px;">
-                        Click "Submit" to save this document
+        
+        if (wasRejected) {
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">🔄</span>
+                    <div>
+                        <div style="font-weight: bold;">Replaced Rejected Document</div>
+                        <div style="font-size: 12px; color: var(--medium-gray);">${previousFilename || 'Previous file'} → ${file.name}</div>
+                        <div style="font-size: 11px; color: var(--medium-gray); margin-top: 5px;">
+                            Click "Submit" to save changes
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else if (wasPreviouslyUploaded) {
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">🔄</span>
+                    <div>
+                        <div style="font-weight: bold;">Document Changed</div>
+                        <div style="font-size: 12px; color: var(--medium-gray);">${previousFilename} → ${file.name}</div>
+                        <div style="font-size: 11px; color: var(--medium-gray); margin-top: 5px;">
+                            Click "Submit" to save changes
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 20px;">📎</span>
+                    <div>
+                        <div style="font-weight: bold;">File Ready</div>
+                        <div style="font-size: 12px; color: var(--medium-gray);">${file.name}</div>
+                        <div style="font-size: 11px; color: var(--medium-gray); margin-top: 5px;">
+                            Click "Submit" to save this document
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
         
         document.body.appendChild(notification);
         
@@ -979,39 +1010,13 @@ function downloadDocument(docId) {
     document.body.removeChild(link);
 }
 
-function removeDocument(docId) {
-    // Remove from pending documents if not saved yet
-    if (pendingDocuments[docId]) {
-        delete pendingDocuments[docId];
-    } else if (userApplication.documents[docId].uploaded) {
-        // Remove from saved documents
-        userApplication.documents[docId] = {
-            uploaded: false,
-            filename: null,
-            verified: false,
-            type: userApplication.documents[docId].type || docId,
-            dataUrl: null
-        };
-        
-        // Update status if all documents were uploaded before
-        if (userApplication.status === 'documents-completed') {
-            userApplication.status = 'applied';
-        }
-        
-        addTimelineEvent(`Document removed: ${userApplication.documents[docId].type}`);
-        saveUserData();
-        updateDashboard();
-    }
-    
-    renderDocumentsList();
-    updateDocumentsSummary();
-}
-
 // This function saves pending documents when "Submit All Documents" is clicked
 function checkDocumentsCompletion() {
     const missingDocsElement = document.getElementById('missingDocuments');
     const pendingCount = Object.keys(pendingDocuments).length;
     const savedCount = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+    const totalCount = Object.keys(userApplication.documents).length;
+    const rejectedCount = Object.values(userApplication.documents).filter(d => d.rejected).length;
     
     // Check if there are pending documents to save
     if (pendingCount === 0 && savedCount < 6) {
@@ -1040,8 +1045,13 @@ function checkDocumentsCompletion() {
                     <p style="margin: 8px 0; color: #333;">
                         You need to upload documents first. Currently saved: ${savedCount}/6
                     </p>
+                    ${rejectedCount > 0 ? `
+                    <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
+                        ⚠️ ${rejectedCount} document(s) were rejected and need to be re-uploaded
+                    </div>
+                    ` : ''}
                     ${missingDocs.length > 0 ? `
-                    <div style="color: #d32f2f; font-weight: bold;">
+                    <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
                         Missing Documents: ${missingDocs.join(', ')}
                     </div>
                     ` : ''}
@@ -1053,10 +1063,41 @@ function checkDocumentsCompletion() {
         return;
     }
     
+    // Track documents that were uploaded/changed
+    const uploadedDocs = [];
+    const changedDocs = [];
+    const replacedRejectedDocs = [];
+    
     // Save pending documents
     Object.keys(pendingDocuments).forEach(docId => {
         const pendingDoc = pendingDocuments[docId];
+        const docName = getDocumentDisplayName(docId);
+        const wasReplacement = pendingDoc.isReplacement;
+        const wasRejected = pendingDoc.wasRejected;
         
+        if (wasRejected) {
+            replacedRejectedDocs.push({
+                id: docId,
+                name: docName,
+                oldFile: pendingDoc.previousFilename,
+                newFile: pendingDoc.name
+            });
+        } else if (wasReplacement) {
+            changedDocs.push({
+                id: docId,
+                name: docName,
+                oldFile: pendingDoc.previousFilename,
+                newFile: pendingDoc.name
+            });
+        } else {
+            uploadedDocs.push({
+                id: docId,
+                name: docName,
+                file: pendingDoc.name
+            });
+        }
+        
+        // Update document data
         userApplication.documents[docId] = {
             uploaded: true,
             filename: pendingDoc.name,
@@ -1065,6 +1106,8 @@ function checkDocumentsCompletion() {
             lastModified: pendingDoc.lastModified,
             dataUrl: pendingDoc.dataUrl, // Store the data URL
             verified: false,
+            rejected: false, // Reset rejected status when new file is uploaded
+            adminNote: '', // Clear admin note when new file is uploaded
             type: userApplication.documents[docId].type || docId
         };
     });
@@ -1073,56 +1116,103 @@ function checkDocumentsCompletion() {
     pendingDocuments = {};
     
     // Count uploaded documents
-    const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+    const newSavedCount = Object.values(userApplication.documents).filter(d => d.uploaded).length;
     const totalDocs = Object.keys(userApplication.documents).length;
+    const newRejectedCount = Object.values(userApplication.documents).filter(d => d.rejected).length;
+    const remainingCount = totalDocs - newSavedCount;
     
-    if (uploadedDocs === totalDocs) {
-        // All documents are uploaded
-        userApplication.status = 'documents-completed';
+    // Add timeline events for uploaded/changed documents
+    if (replacedRejectedDocs.length > 0) {
+        replacedRejectedDocs.forEach(doc => {
+            addTimelineEvent(`Re-uploaded rejected document: ${doc.name} (${remainingCount} remaining)`);
+        });
+    }
+    
+    if (uploadedDocs.length > 0) {
+        // Create accurate timeline message
+        const docNames = uploadedDocs.map(doc => doc.name);
         
-        // Check if exam is also passed
-        if (userApplication.exam.taken && userApplication.exam.passed) {
-            userApplication.status = 'pending';
-            addTimelineEvent('All requirements met - Application submitted for review');
+        if (uploadedDocs.length === 1) {
+            addTimelineEvent(`Submitted document: ${docNames[0]} (${remainingCount} remaining)`);
+        } else {
+            addTimelineEvent(`Submitted ${uploadedDocs.length} documents: ${docNames.join(', ')} (${remainingCount} remaining)`);
+        }
+    }
+    
+    if (changedDocs.length > 0) {
+        changedDocs.forEach(doc => {
+            addTimelineEvent(`Changed document: ${doc.name} (${doc.oldFile} → ${doc.newFile})`);
+        });
+    }
+    
+    if (newSavedCount === totalDocs) {
+        // All documents are uploaded
+        if (newRejectedCount === 0) {
+            // No rejected documents
+            userApplication.status = 'documents-completed';
             
-            // Show success message with admin note
-            missingDocsElement.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-                    <span style="color: #4caf50; font-size: 20px;">✅</span>
-                    <div>
-                        <strong style="color: #2e7d32;">Congratulations! Application Complete</strong>
-                        <p style="margin: 8px 0; color: #333;">
-                            All ${totalDocs} documents have been saved.
-                        </p>
-                        <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                            <strong style="color: var(--primary-blue);">📋 Important Note:</strong>
-                            <p style="margin: 5px 0; color: #333;">
-                                Your application is now <strong>complete</strong> and pending admin review.
-                                Please wait for admin's approval and interview schedule notification.
+            // Check if exam is also passed
+            if (userApplication.exam.taken && userApplication.exam.passed) {
+                userApplication.status = 'pending';
+                addTimelineEvent('All 6 documents submitted - Application complete');
+                addTimelineEvent('All requirements met - Application submitted for review');
+                
+                // Show success message with admin note
+                missingDocsElement.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <span style="color: #4caf50; font-size: 20px;">✅</span>
+                        <div>
+                            <strong style="color: #2e7d32;">Congratulations! Application Complete</strong>
+                            <p style="margin: 8px 0; color: #333;">
+                                All ${totalDocs} documents have been saved.
                             </p>
+                            <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                <strong style="color: var(--primary-blue);">📋 Important Note:</strong>
+                                <p style="margin: 5px 0; color: #333;">
+                                    Your application is now <strong>complete</strong> and pending admin review.
+                                    Please wait for admin's approval and interview schedule notification.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                addTimelineEvent('All 6 documents submitted successfully');
+                
+                // Show success message
+                missingDocsElement.innerHTML = `
+                    <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <span style="color: #4caf50; font-size: 20px;">✅</span>
+                        <div>
+                            <strong style="color: #2e7d32;">Documents Submitted Successfully!</strong>
+                            <p style="margin: 8px 0; color: #333;">
+                                All ${totalDocs} documents have been saved.
+                            </p>
+                            ${userApplication.exam.taken ? 
+                                '<p style="color: #f44336;">⚠️ Exam not passed. Please check exam section.</p>' :
+                                '<p style="color: var(--primary-blue);">Next step: Take the qualification exam.</p>'
+                            }
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // Some documents are still rejected
+            missingDocsElement.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 8px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
+                    <span style="color: #ff9800; font-size: 20px;">⚠️</span>
+                    <div>
+                        <strong style="color: #e65100;">Documents Submitted with Rejections</strong>
+                        <p style="margin: 8px 0; color: #333;">
+                            ${newSavedCount}/${totalDocs} documents saved, but ${newRejectedCount} document(s) were rejected by admin and need re-upload.
+                        </p>
+                        <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
+                            ⚠️ Please re-upload the rejected documents
                         </div>
                     </div>
                 </div>
             `;
-        } else {
-            addTimelineEvent('All documents submitted successfully');
-            
-            // Show success message
-            missingDocsElement.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-                    <span style="color: #4caf50; font-size: 20px;">✅</span>
-                    <div>
-                        <strong style="color: #2e7d32;">Documents Submitted Successfully!</strong>
-                        <p style="margin: 8px 0; color: #333;">
-                            All ${totalDocs} documents have been saved.
-                        </p>
-                        ${userApplication.exam.taken ? 
-                            '<p style="color: #f44336;">⚠️ Exam not passed. Please check exam section.</p>' :
-                            '<p style="color: var(--primary-blue);">Next step: Take the qualification exam.</p>'
-                        }
-                    </div>
-                </div>
-            `;
+            userApplication.status = 'documents-completed';
         }
         
         saveUserData();
@@ -1131,7 +1221,7 @@ function checkDocumentsCompletion() {
         // Auto-switch section based on exam status
         setTimeout(() => {
             if (userApplication.exam.taken) {
-                if (userApplication.exam.passed) {
+                if (userApplication.exam.passed && newRejectedCount === 0) {
                     showSection('status');
                     alert('Congratulations! All requirements are complete. Your application is now pending review.\n\nPlease wait for admin\'s approval and interview schedule notification.');
                 } else {
@@ -1144,8 +1234,8 @@ function checkDocumentsCompletion() {
         }, 1000);
     } else {
         // Not all documents uploaded yet
-        const remainingDocs = totalDocs - uploadedDocs;
-        addTimelineEvent(`Submitted ${Object.keys(pendingDocuments).length} document(s) - ${remainingDocs} remaining`);
+        const remainingDocs = totalDocs - newSavedCount;
+        const uploadedCount = newSavedCount - savedCount; // Newly uploaded documents
         
         saveUserData();
         updateDashboard(); // CRITICAL: This updates the status cards immediately
@@ -1157,27 +1247,50 @@ function checkDocumentsCompletion() {
                 <div>
                     <strong style="color: var(--primary-blue);">Documents Saved</strong>
                     <p style="margin: 8px 0; color: #333;">
-                        ${Object.keys(pendingDocuments).length} document(s) saved. Progress: ${uploadedDocs}/${totalDocs}
+                        ${uploadedCount} document(s) saved successfully. Progress: ${newSavedCount}/${totalDocs}
                     </p>
-                    <div style="color: #ff9800; font-weight: bold;">
+                    ${newRejectedCount > 0 ? `
+                    <div style="color: #d32f2f; font-weight: bold; margin-top: 5px;">
+                        ⚠️ ${newRejectedCount} document(s) were rejected and need re-upload
+                    </div>
+                    ` : ''}
+                    ${remainingDocs > 0 ? `
+                    <div style="color: #ff9800; font-weight: bold; margin-top: 5px;">
                         Still missing ${remainingDocs} document(s)
                     </div>
+                    ` : ''}
                 </div>
             </div>
         `;
         missingDocsElement.style.display = 'block';
     }
     
-    missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (missingDocsElement) {
+        missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     
     // Refresh the documents list to show previews
     renderDocumentsList();
     updateDocumentsSummary();
+    updateSubmitButtonState();
+}
+
+function getDocumentDisplayName(docId) {
+    const names = {
+        picture: '2x2 ID Picture',
+        birthcert: 'Birth Certificate',
+        reportcard: 'Report Card',
+        goodmoral: 'Good Moral Certificate',
+        tor: 'Transcript of Records',
+        diploma: 'High School Diploma'
+    };
+    return names[docId] || docId;
 }
 
 function allDocumentsUploaded() {
     if (!userApplication || !userApplication.documents) return false;
     const docs = userApplication.documents;
+    // Rejected documents still count as uploaded slots (they occupy the slot)
     return Object.values(docs).every(doc => doc.uploaded);
 }
 
@@ -1215,58 +1328,108 @@ function loadStatusSection() {
 }
 
 function showAdminNoteIfComplete() {
-    const adminNoteContainer = document.getElementById('adminNoteContainer');
-    if (!adminNoteContainer) return;
-    
-    if (userApplication.status === 'pending') {
-        adminNoteContainer.innerHTML = `
-            <div class="admin-note">
-                <div class="admin-note-header">
-                    <span style="font-size: 20px;">📋</span>
-                    <h3>Application Complete - Awaiting Admin Review</h3>
-                </div>
-                <div class="admin-note-content">
-                    <p><strong>Status:</strong> Your application is now complete and submitted for review.</p>
-                    <p><strong>Next Steps:</strong></p>
-                    <ul>
-                        <li>✅ All documents submitted</li>
-                        <li>✅ Qualification exam passed</li>
-                        <li>⏳ Waiting for admin document verification</li>
-                        <li>📅 Interview schedule will be sent via SMS</li>
-                    </ul>
-                    <div class="note-important">
-                        <strong>Important:</strong> Please wait for admin's approval. You will receive an SMS notification for your interview schedule once your documents are verified.
+    // Check if application is complete
+    if (userApplication.status === 'pending' || userApplication.status === 'under-review' || userApplication.status === 'accepted' || userApplication.status === 'rejected') {
+        const adminNoteContainer = document.createElement('div');
+        adminNoteContainer.id = 'adminNoteContainer';
+        adminNoteContainer.style.cssText = 'margin: 30px 0;';
+        
+        if (userApplication.status === 'pending') {
+            adminNoteContainer.innerHTML = `
+                <div class="admin-note">
+                    <div class="admin-note-header">
+                        <span style="font-size: 20px;">📋</span>
+                        <h3>Application Complete - Awaiting Admin Review</h3>
+                    </div>
+                    <div class="admin-note-content">
+                        <p><strong>Status:</strong> Your application is now complete and submitted for review.</p>
+                        <p><strong>Next Steps:</strong></p>
+                        <ul>
+                            <li>✅ All documents submitted</li>
+                            <li>✅ Qualification exam passed</li>
+                            <li>⏳ Waiting for admin document verification</li>
+                            <li>📅 Interview schedule will be sent via SMS</li>
+                        </ul>
+                        <div class="note-important">
+                            <strong>Important:</strong> Please wait for admin's approval. You will receive an SMS notification for your interview schedule once your documents are verified.
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        adminNoteContainer.style.display = 'block';
-    } else if (userApplication.status === 'under-review') {
-        adminNoteContainer.innerHTML = `
-            <div class="admin-note" style="background: #fff3e0; border-left: 4px solid #ff9800;">
-                <div class="admin-note-header">
-                    <span style="font-size: 20px;">🔍</span>
-                    <h3>Application Under Review</h3>
-                </div>
-                <div class="admin-note-content">
-                    <p><strong>Status:</strong> Admin is currently reviewing your documents.</p>
-                    <p><strong>Process:</strong></p>
-                    <ul>
-                        <li>✅ Application received</li>
-                        <li>✅ Documents submitted</li>
-                        <li>✅ Exam completed</li>
-                        <li>🔍 Documents being verified</li>
-                        <li>📅 Interview scheduling pending</li>
-                    </ul>
-                    <div class="note-important">
-                        <strong>Note:</strong> Your application is being reviewed. You will be notified via SMS once a decision is made.
+            `;
+        } else if (userApplication.status === 'under-review') {
+            adminNoteContainer.innerHTML = `
+                <div class="admin-note" style="background: #fff3e0; border-left: 4px solid #ff9800;">
+                    <div class="admin-note-header">
+                        <span style="font-size: 20px;">🔍</span>
+                        <h3>Application Under Review</h3>
+                    </div>
+                    <div class="admin-note-content">
+                        <p><strong>Status:</strong> Admin is currently reviewing your documents.</p>
+                        <p><strong>Process:</strong></p>
+                        <ul>
+                            <li>✅ Application received</li>
+                            <li>✅ Documents submitted</li>
+                            <li>✅ Exam completed</li>
+                            <li>🔍 Documents being verified</li>
+                            <li>📅 Interview scheduling pending</li>
+                        </ul>
+                        <div class="note-important">
+                            <strong>Note:</strong> Your application is being reviewed. You will be notified via SMS once a decision is made.
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        adminNoteContainer.style.display = 'block';
-    } else {
-        adminNoteContainer.style.display = 'none';
+            `;
+        } else if (userApplication.status === 'accepted') {
+            adminNoteContainer.innerHTML = `
+                <div class="admin-note" style="background: #e8f5e9; border-left: 4px solid #4caf50;">
+                    <div class="admin-note-header">
+                        <span style="font-size: 20px;">✅</span>
+                        <h3>Application Accepted!</h3>
+                    </div>
+                    <div class="admin-note-content">
+                        <p><strong>Status:</strong> Congratulations! Your application has been accepted.</p>
+                        <p><strong>Next Steps:</strong></p>
+                        <ul>
+                            <li>✅ Application approved</li>
+                            <li>✅ Documents verified</li>
+                            <li>✅ Exam passed</li>
+                            <li>📅 Interview schedule: ${userApplication.adminReview.interviewDate || 'Will be sent via SMS'}</li>
+                            <li>📍 Location: ${userApplication.adminReview.interviewLocation || 'To be announced'}</li>
+                        </ul>
+                        <div class="note-important">
+                            <strong>Important:</strong> Please check your SMS for interview details and further instructions.
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (userApplication.status === 'rejected') {
+            adminNoteContainer.innerHTML = `
+                <div class="admin-note" style="background: #ffebee; border-left: 4px solid #f44336;">
+                    <div class="admin-note-header">
+                        <span style="font-size: 20px;">❌</span>
+                        <h3>Application Rejected</h3>
+                    </div>
+                    <div class="admin-note-content">
+                        <p><strong>Status:</strong> Your application has been rejected by the administrator.</p>
+                        <p><strong>Review Date:</strong> ${userApplication.adminReview.reviewDate ? new Date(userApplication.adminReview.reviewDate).toLocaleDateString() : 'N/A'}</p>
+                        <p><strong>Reviewer:</strong> ${userApplication.adminReview.reviewer || 'Administrator'}</p>
+                        <p><strong>Reason:</strong></p>
+                        <div style="background: #ffcdd2; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                            ${userApplication.adminReview.notes || 'No specific reason provided.'}
+                        </div>
+                        <div class="note-important">
+                            <strong>Note:</strong> You cannot upload new documents or modify this application. For inquiries, please contact the admin office.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Insert after the content header
+        const contentHeader = document.querySelector('#statusSection .content-header');
+        if (contentHeader) {
+            contentHeader.parentNode.insertBefore(adminNoteContainer, contentHeader.nextSibling);
+        }
     }
 }
 
@@ -1331,7 +1494,9 @@ function updateApplicationInfo() {
         dateApplied.textContent = date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
-            day: 'numeric'
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
     } else {
         dateApplied.textContent = '--';
@@ -1375,12 +1540,16 @@ function updateDocumentsStatus() {
         const docData = userApplication.documents[doc.id];
         const isUploaded = docData && docData.uploaded;
         const isVerified = docData && docData.verified;
+        const isRejected = docData && docData.rejected;
         
         let statusText = 'Not Uploaded';
         let statusClass = 'status-required';
         
         if (isUploaded) {
-            if (isVerified) {
+            if (isRejected) {
+                statusText = 'Rejected ❌';
+                statusClass = 'status-required';
+            } else if (isVerified) {
                 statusText = 'Verified ✓';
                 statusClass = 'status-verified';
             } else {
@@ -1394,8 +1563,9 @@ function updateDocumentsStatus() {
                 <div class="detail-label">${doc.name}:</div>
                 <div class="detail-value">
                     <span class="document-status ${statusClass}">${statusText}</span>
+                    ${isRejected && docData.adminNote ? `<br><small style="color: #d32f2f; font-style: italic;">Note: ${docData.adminNote}</small>` : ''}
                     ${docData && docData.filename ? `<br><small style="color: var(--medium-gray);">${docData.filename}</small>` : ''}
-                    ${isUploaded && docData.dataUrl ? `
+                    ${isUploaded && docData.dataUrl && !isRejected ? `
                     <br>
                     <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px; margin-top: 5px;" 
                             onclick="downloadDocument('${doc.id}')">
@@ -1409,6 +1579,7 @@ function updateDocumentsStatus() {
 
     // Add summary
     const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+    const rejectedDocs = Object.values(userApplication.documents).filter(d => d.rejected).length;
     const totalDocs = Object.keys(userApplication.documents).length;
     const progress = Math.round((uploadedDocs / totalDocs) * 100);
     
@@ -1422,7 +1593,12 @@ function updateDocumentsStatus() {
                     </div>
                     <div style="font-weight: 600; color: var(--primary-blue);">${uploadedDocs}/${totalDocs} (${progress}%)</div>
                 </div>
-                ${uploadedDocs < totalDocs ? 
+                ${rejectedDocs > 0 ? 
+                    `<div style="font-size: 12px; color: #d32f2f; margin-top: 5px;">
+                        ⚠️ ${rejectedDocs} document(s) rejected - please re-upload
+                    </div>` : ''
+                }
+                ${uploadedDocs < totalDocs && rejectedDocs === 0 ? 
                     `<div style="font-size: 12px; color: #e53935; margin-top: 5px;">
                         ⚠️ Missing ${totalDocs - uploadedDocs} document(s)
                     </div>` : ''
@@ -1904,15 +2080,22 @@ function addTimelineEvent(event) {
         userApplication.timeline = [];
     }
     
-    userApplication.timeline.push({
+    const timelineEvent = {
         date: new Date().toISOString(),
         event: event
-    });
+    };
+    
+    userApplication.timeline.push(timelineEvent);
     
     // Auto-update status section if it's currently visible
     if (currentSection === 'status') {
         updateApplicationTimeline();
     }
+    
+    // Save the updated timeline
+    saveUserData();
+    
+    return timelineEvent;
 }
 
 function saveUserData() {
@@ -1934,10 +2117,35 @@ function saveUserData() {
                         userApplication.exam = existingApp.exam;
                     }
                 }
+                
+                // Also preserve document data if it exists
+                if (existingApp && existingApp.documents) {
+                    // Merge document data (keep uploaded files)
+                    for (const docKey in existingApp.documents) {
+                        if (existingApp.documents[docKey] && existingApp.documents[docKey].uploaded) {
+                            if (!userApplication.documents[docKey] || !userApplication.documents[docKey].uploaded) {
+                                userApplication.documents[docKey] = existingApp.documents[docKey];
+                            }
+                        }
+                    }
+                }
             }
             
+            // Update the user in the array
             users[userIndex] = currentUser;
             localStorage.setItem('registeredUsers', JSON.stringify(users));
+            
+            // Also store document data separately in localStorage for easy access
+            const documentData = {
+                userId: currentUser.account.username,
+                applicationId: userApplication.applicationId,
+                documents: userApplication.documents,
+                lastUpdated: new Date().toISOString()
+            };
+            
+            // Store in localStorage with a unique key
+            const docStorageKey = `documents_${currentUser.account.username}_${userApplication.applicationId}`;
+            localStorage.setItem(docStorageKey, JSON.stringify(documentData));
         }
         
         // Also update session storage for quick access
@@ -2043,10 +2251,12 @@ function checkForAdminUpdates() {
     if (userApplication && userApplication.adminReview && userApplication.adminReview.decision) {
         if (userApplication.adminReview.decision === 'accepted' || userApplication.adminReview.decision === 'rejected') {
             userApplication.status = userApplication.adminReview.decision;
-            addTimelineEvent(`Application ${userApplication.adminReview.decision} by admin`);
             
             if (userApplication.adminReview.decision === 'accepted') {
+                addTimelineEvent('Application accepted by admin');
                 addTimelineEvent('Interview scheduled - Check SMS for details');
+            } else if (userApplication.adminReview.decision === 'rejected') {
+                addTimelineEvent('Application rejected by admin');
             }
             
             saveUserData();
@@ -2056,6 +2266,25 @@ function checkForAdminUpdates() {
             if (currentSection === 'status') {
                 loadStatusSection();
             }
+        }
+    }
+    
+    // Check for document rejections from admin
+    if (userApplication && userApplication.documents) {
+        let hasRejected = false;
+        for (const docKey in userApplication.documents) {
+            const doc = userApplication.documents[docKey];
+            if (doc.rejected && doc.adminNote) {
+                hasRejected = true;
+                break;
+            }
+        }
+        
+        if (hasRejected) {
+            // Update status to indicate documents need re-upload
+            userApplication.status = 'documents-completed';
+            saveUserData();
+            updateDashboard();
         }
     }
 }

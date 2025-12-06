@@ -185,27 +185,32 @@
                         ⚠️ Please upload documents in this order: 1. 2x2 ID → 2. Birth Certificate → 3. Report Card → 4. Good Moral → 5. TOR → 6. Diploma
                     </p>
                     
-                    <div class="documents-summary" id="documentsSummary" style="background: var(--light-blue); padding: 15px; border-radius: 10px; margin: 20px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <strong>Upload Progress:</strong> 
-                                <span id="uploadedCount">0</span>/<span id="totalCount">6</span> documents
-                            </div>
-                            <div class="progress-circle" id="progressCircle">
-                                <svg width="60" height="60" viewBox="0 0 36 36">
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none" stroke="#e0e0e0" stroke-width="3"/>
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none" stroke="#1e3c72" stroke-width="3" stroke-dasharray="0, 100"
-                                        id="circlePath"/>
-                                    <text x="18" y="20.35" text-anchor="middle" font-size="10" fill="#1e3c72" id="circleText">0%</text>
-                                </svg>
-                            </div>
-                        </div>
-                        <div id="missingDocuments" style="margin-top: 10px; font-size: 14px; color: #e53935;">
-                            <!-- Missing documents will be shown here -->
-                        </div>
-                    </div>
+                    <!-- Add this in the Upload Documents section, replace the documents-summary div -->
+<div class="documents-summary" id="documentsSummary" style="background: var(--light-blue); padding: 15px; border-radius: 10px; margin: 20px 0;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <strong>Upload Progress:</strong> 
+            <span id="uploadedCount">0</span>/<span id="totalCount">6</span> documents
+            <br>
+            <small id="rejectedDocumentsInfo" style="color: #d32f2f; font-weight: 500; display: none;">
+                ⚠️ Some documents need re-upload
+            </small>
+        </div>
+        <div class="progress-circle" id="progressCircle">
+            <svg width="60" height="60" viewBox="0 0 36 36">
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none" stroke="#e0e0e0" stroke-width="3"/>
+                <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none" stroke="#1e3c72" stroke-width="3" stroke-dasharray="0, 100"
+                    id="circlePath"/>
+                <text x="18" y="20.35" text-anchor="middle" font-size="10" fill="#1e3c72" id="circleText">0%</text>
+            </svg>
+        </div>
+    </div>
+    <div id="missingDocuments" style="margin-top: 10px; font-size: 14px; color: #e53935; display: none;">
+        <!-- Missing documents will be shown here -->
+    </div>
+</div>
                     
                     <div class="documents-list" id="documentsList">
                         <!-- Documents will be loaded here -->
