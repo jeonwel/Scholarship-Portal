@@ -1427,3 +1427,330 @@ body {
     stroke-dasharray: 0, 100;
     transition: stroke-dasharray 0.5s ease;
 }
+
+/* Document rejected state */
+.document-card.rejected {
+    border-color: var(--danger);
+    background: rgba(229, 57, 53, 0.08);
+    animation: pulse 2s infinite;
+}
+
+.document-card.rejected .document-status {
+    background: #ffebee;
+    color: var(--danger);
+}
+
+.document-card.rejected .upload-area {
+    border-color: var(--danger);
+    background: rgba(229, 57, 53, 0.05);
+}
+
+/* Rejection message */
+.rejection-message {
+    background: #ffebee;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    border-left: 3px solid var(--danger);
+    font-size: 13px;
+    color: #b71c1c;
+}
+
+.rejection-message strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Document card when application is rejected */
+.application-rejected .document-card {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.application-rejected .upload-area {
+    cursor: not-allowed;
+    background: #f5f5f5;
+    border-color: #ddd;
+}
+
+.application-rejected .upload-area:hover {
+    border-color: #ddd;
+    background: #f5f5f5;
+}
+
+/* Status badges */
+.status-rejected {
+    background: #ffebee !important;
+    color: var(--danger) !important;
+}
+
+.status-missing {
+    background: #f5f5f5 !important;
+    color: var(--medium-gray) !important;
+}
+
+/* Disabled state for rejected applications */
+.btn-primary:disabled,
+.btn-start-exam:disabled,
+#submitDocumentsBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #cccccc !important;
+}
+
+.btn-primary:disabled:hover,
+.btn-start-exam:disabled:hover,
+#submitDocumentsBtn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Warning Banner Styles */
+.warning-banner {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin: 0 20px 20px;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    display: none;
+    animation: pulse 2s infinite;
+}
+
+.warning-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    color: white;
+}
+
+.warning-icon {
+    font-size: 24px;
+}
+
+.warning-text {
+    flex: 1;
+}
+
+.warning-title {
+    font-size: 16px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.warning-description {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.countdown-timer {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Exam Failed Warning */
+.exam-failed-warning {
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+}
+
+/* Application Rejected Warning */
+.app-rejected-warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.9; }
+    100% { opacity: 1; }
+}
+
+/* Document verification styles */
+.document-verified {
+    border: 2px solid #4caf50 !important;
+    background: #e8f5e9 !important;
+}
+
+.verified-badge {
+    background: #4caf50;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.document-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.document-disabled .upload-area {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+    border: 2px dashed #ccc !important;
+}
+
+.document-disabled .upload-area:hover {
+    border-color: #ccc !important;
+    background: #f5f5f5 !important;
+}
+
+/* Exam auto-enable styles */
+.exam-auto-enabled {
+    border: 2px solid #4caf50 !important;
+    background: rgba(76, 175, 80, 0.1) !important;
+}
+
+.exam-auto-enabled .exam-status {
+    color: #4caf50 !important;
+    font-weight: bold;
+}
+
+/* Rejected document styles */
+.document-rejected {
+    border: 2px solid #e53935 !important;
+    background: rgba(229, 57, 53, 0.1) !important;
+}
+
+.document-rejected .document-status {
+    color: #e53935 !important;
+    font-weight: bold;
+}
+
+/* Disabled state for failed exam */
+.application-failed .document-card {
+    opacity: 0.6;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.application-failed .upload-area {
+    background: #f5f5f5 !important;
+    color: #999 !important;
+    border: 2px dashed #ccc !important;
+}
+
+.application-failed .btn-primary,
+.application-failed .btn-start-exam {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #cccccc !important;
+}
+
+.application-failed .btn-primary:hover,
+.application-failed .btn-start-exam:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Document locked (verified) state */
+.document-locked {
+    position: relative;
+}
+
+.document-locked::after {
+    content: '🔒 VERIFIED';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: #4caf50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+}
+
+/* Update existing document card styles */
+.document-card.uploaded.verified {
+    border: 2px solid #4caf50;
+    background: rgba(76, 175, 80, 0.05);
+}
+
+.document-card.uploaded.verified .document-status {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+/* Add to existing .document-card styles */
+.document-card {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+/* Countdown animation for deletion */
+@keyframes countdown-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.countdown-timer {
+    animation: countdown-pulse 1s infinite;
+}
+
+/* Responsive warning banners */
+@media (max-width: 768px) {
+    .warning-banner {
+        margin: 0 10px 15px;
+        padding: 10px 15px;
+    }
+    
+    .warning-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    
+    .warning-title {
+        font-size: 14px;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .countdown-timer {
+        font-size: 14px;
+        padding: 2px 8px;
+    }
+}
+
+/* Add to your existing warning banner CSS */
+.countdown-timer {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 3px 10px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    animation: countdown-pulse 1s infinite;
+}
+
+@keyframes countdown-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* For rejected warning specific countdown */
+.app-rejected-warning .countdown-timer {
+    background: rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* When countdown is low (3 days or less) */
+.countdown-low {
+    background: rgba(255, 255, 255, 0.4) !important;
+    color: #ffcc00 !important;
+    animation: countdown-alert 0.5s infinite alternate;
+}
+
+@keyframes countdown-alert {
+    0% { background: rgba(255, 255, 255, 0.4); }
+    100% { background: rgba(255, 68, 68, 0.6); }
+}
+

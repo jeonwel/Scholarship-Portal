@@ -275,11 +275,35 @@ function loadAllApplicants() {
                         examData = application.exam;
                     }
                     
-                    // Calculate if all documents are uploaded
-                    const allDocsUploaded = application.documents ? 
-                        Object.values(application.documents).filter(doc => !doc.rejected).every(doc => doc.uploaded) : false;
+                    // Calculate document status - ONLY count uploaded and NOT rejected
+                    let uploadedCount = 0;
+                    let rejectedCount = 0;
+                    let totalDocs = 6;
                     
-                    // NEW: Simplified status system - only waiting, approved, rejected
+                    if (application.documents) {
+                        // Count only non-rejected uploaded documents
+                        uploadedCount = Object.values(application.documents).filter(doc => 
+                            doc.uploaded && !doc.rejected
+                        ).length;
+                        
+                        // Count rejected documents
+                        rejectedCount = Object.values(application.documents).filter(doc => 
+                            doc.rejected
+                        ).length;
+                    }
+                    
+                    // Check if all required documents are uploaded (excluding rejected ones)
+                    const allDocsUploaded = (uploadedCount === totalDocs) && (rejectedCount === 0);
+                    
+                    // Save document stats to application
+                    application.documentsStats = {
+                        uploadedCount,
+                        rejectedCount,
+                        totalDocs,
+                        allDocsUploaded
+                    };
+                    
+                    // NEW: Simplified status system
                     let status = application.status;
                     
                     // Convert old statuses to new system
@@ -287,6 +311,11 @@ function loadAllApplicants() {
                         status === 'applied' || status === 'documents-completed' || status === 'exam-completed' ||
                         status === 'completed') {
                         status = 'waiting';
+                    }
+                    
+                    // If application is rejected by admin, set status to rejected
+                    if (application.adminReview?.decision === 'rejected') {
+                        status = 'rejected';
                     }
                     
                     // Initialize interview status if not exists
@@ -302,6 +331,7 @@ function loadAllApplicants() {
                         status: status,
                         submittedDate: application.submittedDate,
                         documents: application.documents || {},
+                        documentsStats: application.documentsStats,
                         exam: examData,
                         interviewStatus: application.interviewStatus,
                         interviewDate: application.interviewDate,
@@ -328,14 +358,22 @@ function updateApplicantStatusesInStorage() {
     users.forEach(user => {
         if (user.applications) {
             user.applications.forEach(application => {
-                if (application.status !== 'cancelled' && application.status !== 'approved' && application.status !== 'rejected') {
-                    // Convert all other statuses to 'waiting'
-                    if (application.status === 'pending' || application.status === 'need-exam' || 
-                        application.status === 'under-review' || application.status === 'applied' ||
-                        application.status === 'documents-completed' || application.status === 'exam-completed' ||
-                        application.status === 'completed') {
-                        application.status = 'waiting';
-                        updated = true;
+                if (application.status !== 'cancelled') {
+                    // Check if admin rejected the application
+                    if (application.adminReview?.decision === 'rejected') {
+                        if (application.status !== 'rejected') {
+                            application.status = 'rejected';
+                            updated = true;
+                        }
+                    } else if (application.status !== 'approved' && application.status !== 'rejected') {
+                        // Convert all other statuses to 'waiting'
+                        if (application.status === 'pending' || application.status === 'need-exam' || 
+                            application.status === 'under-review' || application.status === 'applied' ||
+                            application.status === 'documents-completed' || application.status === 'exam-completed' ||
+                            application.status === 'completed') {
+                            application.status = 'waiting';
+                            updated = true;
+                        }
                     }
                 }
             });
@@ -349,7 +387,7 @@ function updateApplicantStatusesInStorage() {
 
 function updateDashboard() {
     updateStatistics();
-    loadRecentApplications();
+    // Removed: loadRecentApplications(); - No longer needed
 }
 
 function updateStatistics() {
@@ -364,59 +402,30 @@ function updateStatistics() {
     document.getElementById('rejected').textContent = rejected;
 }
 
-function loadRecentApplications() {
-    const tbody = document.getElementById('recentApplicationsBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    const recentApps = [...allApplicants]
-        .sort((a, b) => new Date(b.submittedDate || 0) - new Date(a.submittedDate || 0))
-        .slice(0, 10);
-    
-    if (recentApps.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" class="empty-state">
-                    <div class="empty-state-icon">📝</div>
-                    <p>No applications found</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    recentApps.forEach(applicant => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${applicant.applicationId || 'N/A'}</td>
-            <td>${applicant.personal.firstName} ${applicant.personal.lastName}</td>
-            <td>${getProgramName(applicant.program) || 'N/A'}</td>
-            <td>${applicant.submittedDate ? formatDate(applicant.submittedDate) : 'N/A'}</td>
-            <td><span class="status-badge badge-${getStatusClass(applicant.status)}">${getStatusText(applicant.status)}</span></td>
-            <td><span class="status-badge badge-${getInterviewStatusClass(applicant.interviewStatus)}">${getInterviewStatusText(applicant.interviewStatus)}</span></td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-icon btn-view" onclick="viewApplicant('${applicant.applicationId}')" title="View Details">👁️</button>
-                    ${applicant.status !== 'approved' && applicant.status !== 'rejected' ? `
-                        <button class="btn-icon btn-approve" onclick="approveApplication('${applicant.applicationId}')" title="Approve">✅</button>
-                        <button class="btn-icon btn-reject" onclick="rejectApplication('${applicant.applicationId}')" title="Reject">❌</button>
-                    ` : ''}
-                    <button class="btn-icon" onclick="updateInterviewStatus('${applicant.applicationId}')" title="Update Interview" style="background: #e1bee7; color: #7b1fa2;">📅</button>
-                </div>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
+// ===== UPDATED: Don't show applicants who failed the exam =====
 function loadApplicantsTable() {
     const tbody = document.getElementById('applicantsTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    if (filteredApplicants.length === 0) {
+    // Filter applicants: don't show those who failed the exam (score < 75)
+    const displayApplicants = filteredApplicants.filter(applicant => {
+        // If exam is taken, check if passed
+        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
+            const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+                ? applicant.exam.score.percentage 
+                : (applicant.exam.score || 0);
+            
+            // Don't show applicants who failed (score < 75)
+            if (scoreValue < 75) {
+                return false;
+            }
+        }
+        return true;
+    });
+    
+    if (displayApplicants.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="empty-state">
@@ -428,11 +437,20 @@ function loadApplicantsTable() {
         return;
     }
     
-    filteredApplicants.forEach(applicant => {
-        // Count only non-rejected uploaded documents
-        const uploadedDocs = applicant.documents ? 
-            Object.values(applicant.documents).filter(doc => doc.uploaded && !doc.rejected).length : 0;
+    displayApplicants.forEach(applicant => {
+        // Use accurate document stats - ONLY count uploaded and NOT rejected
+        const uploadedDocs = applicant.documentsStats?.uploadedCount || 0;
         const totalDocs = 6;
+        const displayCount = `${uploadedDocs}/${totalDocs}`;
+        
+        // Calculate exam score
+        let examScore = 'Not Taken';
+        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
+            const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+                ? applicant.exam.score.percentage 
+                : (applicant.exam.score || 0);
+            examScore = `${scoreValue}%`;
+        }
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -441,8 +459,8 @@ function loadApplicantsTable() {
             <td>${applicant.personal.email}</td>
             <td>${getProgramName(applicant.program) || 'N/A'}</td>
             <td>${applicant.submittedDate ? formatDate(applicant.submittedDate) : 'N/A'}</td>
-            <td>${uploadedDocs}/${totalDocs}</td>
-            <td>${applicant.exam.taken ? `${applicant.exam.score || 0}%` : 'Not Taken'}</td>
+            <td>${displayCount}</td>
+            <td>${examScore}</td>
             <td><span class="status-badge badge-${getStatusClass(applicant.status)}">${getStatusText(applicant.status)}</span></td>
             <td><span class="status-badge badge-${getInterviewStatusClass(applicant.interviewStatus)}">${getInterviewStatusText(applicant.interviewStatus)}</span></td>
             <td>
@@ -511,7 +529,7 @@ function saveInterviewStatus() {
         loadAllApplicants();
         
         if (currentViewSection === 'overview') {
-            loadRecentApplications();
+            // Nothing to load here since Recent Applications is removed
         } else if (currentViewSection === 'applicants') {
             loadApplicantsTable();
         }
@@ -525,14 +543,37 @@ function saveInterviewStatus() {
     currentInterviewAppId = null;
 }
 
-// ===== DOCUMENT MANAGEMENT =====
+// ===== UPDATED DOCUMENT MANAGEMENT =====
+// Store all rejected documents in one object with user identification
+function updateDocumentRejectionStorage(applicationId, documentId, reason, userData, docData) {
+    const rejectionKey = `${applicationId}_${documentId}`;
+    const timestamp = new Date().toISOString();
+    
+    // Store rejection in central storage with user identification
+    documentRejectionReasons[rejectionKey] = {
+        applicationId: applicationId,
+        documentId: documentId,
+        reason: reason,
+        rejectedBy: adminData.fullName || 'Admin',
+        rejectionDate: timestamp,
+        documentType: documentId,
+        studentName: `${userData.personal.firstName} ${userData.personal.lastName}`,
+        studentEmail: userData.personal.email,
+        originalData: docData
+    };
+    
+    localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+}
+
 function loadDocumentsTable() {
     const tbody = document.getElementById('documentsTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    // Collect only PENDING (unverified) documents from applicants who are NOT rejected
+    // Collect only documents that need admin action:
+    // 1. Uploaded but not verified
+    // 2. Not rejected (rejected documents are removed from localStorage)
     let pendingDocuments = [];
     
     filteredApplicants.forEach(applicant => {
@@ -541,9 +582,24 @@ function loadDocumentsTable() {
             return;
         }
         
+        // Skip applicants who failed the exam
+        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
+            const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+                ? applicant.exam.score.percentage 
+                : (applicant.exam.score || 0);
+            
+            if (scoreValue < 75) {
+                return;
+            }
+        }
+        
         if (applicant.documents) {
             Object.entries(applicant.documents).forEach(([docType, docData]) => {
-                if (docData.uploaded && docData.filename && !docData.verified && !docData.rejected) {
+                // Show only documents that need admin action:
+                // - Uploaded
+                // - Not verified
+                // - Not rejected (rejected documents are already removed from localStorage)
+                if (docData.uploaded && docData.filename && !docData.verified) {
                     pendingDocuments.push({
                         studentName: `${applicant.personal.firstName} ${applicant.personal.lastName}`,
                         docType: docData.type || docType,
@@ -564,7 +620,7 @@ function loadDocumentsTable() {
             <tr>
                 <td colspan="6" class="empty-state">
                     <div class="empty-state-icon">📄</div>
-                    <p>No pending documents for review</p>
+                    <p>No documents pending review</p>
                 </td>
             </tr>
         `;
@@ -578,11 +634,11 @@ function loadDocumentsTable() {
             <td>${doc.docType}</td>
             <td>${doc.fileName}</td>
             <td>${doc.uploadDate ? formatDate(doc.uploadDate) : 'N/A'}</td>
-            <td><span class="status-badge badge-pending">Pending</span></td>
+            <td><span class="status-badge badge-pending">Pending Review</span></td>
             <td>
                 <div class="action-buttons">
                     <button class="btn-icon btn-view" onclick="viewDocument('${doc.applicantId}', '${doc.docId}')" title="View Document">👁️</button>
-                    <button class="btn-icon btn-approve" onclick="verifyDocument('${doc.applicantId}', '${doc.docId}')" title="Verify">✅</button>
+                    <button class="btn-icon btn-approve" onclick="verifyDocument('${doc.applicantId}', '${doc.docId}')" title="Approve">✅</button>
                     <button class="btn-icon btn-reject" onclick="rejectDocument('${doc.applicantId}', '${doc.docId}')" title="Reject Document">❌</button>
                 </div>
             </td>
@@ -682,20 +738,16 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
         if (user.applications) {
             user.applications.forEach(app => {
                 if (app.applicationId === applicationId && app.documents && app.documents[documentId]) {
+                    // Mark document as verified
                     app.documents[documentId].verified = true;
                     app.documents[documentId].verifiedBy = adminData.fullName || 'Admin';
                     app.documents[documentId].verificationDate = new Date().toISOString();
                     
-                    // Remove rejection reason if it exists
-                    const rejectionKey = `${applicationId}_${documentId}`;
-                    if (documentRejectionReasons[rejectionKey]) {
-                        delete documentRejectionReasons[rejectionKey];
-                        localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
-                    }
+                    // Remove from pending review (document will vanish from review table)
                     
-                    // Check if all documents are verified and update application status
+                    // Check if all documents are verified
                     const allDocsVerified = app.documents ? 
-                        Object.values(app.documents).filter(doc => !doc.rejected).every(doc => doc.uploaded && doc.verified) : false;
+                        Object.values(app.documents).every(doc => doc.uploaded && doc.verified) : false;
                     
                     if (allDocsVerified && app.exam && app.exam.passed) {
                         app.status = 'waiting';
@@ -726,7 +778,7 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
     if (updated) {
         localStorage.setItem('registeredUsers', JSON.stringify(users));
         loadAllApplicants();
-        loadDocumentsTable();
+        loadDocumentsTable(); // Document will vanish from review table
         
         if (fromModal) {
             closeModal();
@@ -754,38 +806,26 @@ function rejectDocument(applicationId, documentId, fromModal = false) {
                     const docData = {
                         filename: app.documents[documentId].filename,
                         type: app.documents[documentId].type,
-                        rejectedBy: adminData.fullName || 'Admin',
-                        rejectionDate: new Date().toISOString(),
-                        reason: reason
+                        lastModified: app.documents[documentId].lastModified
                     };
                     
-                    // Save rejection reason in localStorage (application data)
-                    const rejectionKey = `${applicationId}_${documentId}`;
-                    documentRejectionReasons[rejectionKey] = {
-                        reason: reason,
-                        rejectedBy: adminData.fullName || 'Admin',
-                        rejectionDate: new Date().toISOString(),
-                        documentType: documentId,
-                        studentName: `${user.personal.firstName} ${user.personal.lastName}`,
-                        originalData: docData
-                    };
-                    localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+                    // Store rejection in central storage
+                    updateDocumentRejectionStorage(applicationId, documentId, reason, user, docData);
                     
-                    // REMOVE the document from student's application
+                    // COMPLETELY REMOVE the document from student's application
+                    delete app.documents[documentId];
+                    
+                    // Or reset to not uploaded state (cleaner approach)
                     app.documents[documentId] = {
                         uploaded: false,
                         filename: null,
                         verified: false,
-                        rejected: true,
-                        adminNote: reason,
-                        type: app.documents[documentId].type || documentId,
-                        dataUrl: null // Clear the data URL
+                        type: docData.type || documentId,
+                        dataUrl: null,
+                        lastModified: new Date().toISOString()
                     };
                     
-                    // Update application status
-                    app.status = 'documents-completed';
-                    
-                    // Add timeline event
+                    // Update application timeline
                     if (!app.timeline) app.timeline = [];
                     app.timeline.push({
                         date: new Date().toISOString(),
@@ -801,7 +841,7 @@ function rejectDocument(applicationId, documentId, fromModal = false) {
     if (updated) {
         localStorage.setItem('registeredUsers', JSON.stringify(users));
         loadAllApplicants();
-        loadDocumentsTable();
+        loadDocumentsTable(); // Document will vanish from review table
         
         if (fromModal) {
             closeModal();
@@ -1144,7 +1184,8 @@ function viewApplicant(applicationId) {
         }
     });
     
-    // Create documents grid HTML
+    // Create documents grid HTML - Show documents that are uploaded or missing
+    // Don't label rejected documents as "rejected", just show as "missing"
     let documentsHTML = '';
     if (applicant.documents) {
         Object.entries(applicant.documents).forEach(([key, doc]) => {
@@ -1157,13 +1198,28 @@ function viewApplicant(applicationId) {
                 diploma: 'High School Diploma'
             }[key] || key;
             
+            // Get document status
+            let statusClass = '';
+            let statusText = '';
+            
+            if (doc.verified) {
+                statusClass = 'badge-approved';
+                statusText = 'Verified';
+            } else if (doc.uploaded) {
+                statusClass = 'badge-pending';
+                statusText = 'Pending';
+            } else {
+                statusClass = 'badge-missing';
+                statusText = 'Missing'; // Don't show "rejected", just "missing"
+            }
+            
             documentsHTML += `
-                <div class="document-item ${doc.verified ? 'verified' : doc.rejected ? 'rejected' : doc.uploaded ? '' : 'required'}">
+                <div class="document-item ${doc.verified ? 'verified' : doc.uploaded ? '' : 'required'}">
                     <div class="document-header">
                         <div class="document-name">${docDisplayName}</div>
                         <div class="document-actions">
-                            <span class="status-badge ${doc.verified ? 'badge-approved' : doc.rejected ? 'badge-rejected' : doc.uploaded ? 'badge-pending' : 'badge-missing'}">
-                                ${doc.verified ? 'Verified' : doc.rejected ? 'Rejected' : doc.uploaded ? 'Pending' : 'Missing'}
+                            <span class="status-badge ${statusClass}">
+                                ${statusText}
                             </span>
                         </div>
                     </div>
@@ -1171,9 +1227,8 @@ function viewApplicant(applicationId) {
                         <p style="margin-top: 10px; font-size: 12px;">
                             File: ${doc.filename}<br>
                             ${doc.verified ? `Verified by: ${doc.verifiedBy || 'Admin'} on ${formatDate(doc.verificationDate)}` : ''}
-                            ${doc.rejected ? `Rejected: ${doc.rejectionReason || doc.adminNote || 'No reason provided'}` : ''}
                         </p>
-                        ${doc.dataUrl && !doc.rejected ? `
+                        ${doc.dataUrl && !doc.verified ? `
                         <div style="margin-top: 10px;">
                             <button class="btn-filter" onclick="viewDocument('${applicant.applicationId}', '${key}')" style="padding: 5px 10px; font-size: 12px;">
                                 View Document
@@ -1254,6 +1309,10 @@ function viewApplicant(applicationId) {
                 <h4>Documents Status</h4>
                 <div class="documents-grid">
                     ${documentsHTML}
+                </div>
+                
+                <div style="margin-top: 15px; font-size: 14px; color: #666">
+                    <strong>Document Progress:</strong> ${applicant.documentsStats?.uploadedCount || 0}/6 uploaded
                 </div>
                 
                 ${documentRejectionsHTML ? `
@@ -1550,7 +1609,7 @@ function updateNotificationBadges() {
     allApplicants.forEach(applicant => {
         if (applicant.status !== 'rejected' && applicant.documents) {
             Object.values(applicant.documents).forEach(doc => {
-                if (doc.uploaded && !doc.verified && !doc.rejected) {
+                if (doc.uploaded && !doc.verified) {
                     unverifiedDocs++;
                 }
             });
@@ -1601,7 +1660,7 @@ function setupEventListeners() {
 function refreshCurrentView() {
     switch(currentViewSection) {
         case 'overview':
-            loadRecentApplications();
+            // Nothing to load since Recent Applications is removed
             break;
         case 'applicants':
             loadApplicantsTable();
@@ -1965,3 +2024,295 @@ window.createTestStudent = function() {
     updateDashboard();
     alert('✅ Test student created!');
 };
+
+// Student dashboard functions
+function checkDocumentsCompletion() {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) return;
+    
+    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+    const currentUser = users.find(u => u.account?.username === user.username);
+    
+    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
+        alert('No application found!');
+        return;
+    }
+    
+    const application = currentUser.applications[0];
+    
+    // Check if application is rejected by admin
+    if (application.status === 'rejected' || application.adminReview?.decision === 'rejected') {
+        alert('Your application has been rejected. You cannot submit documents.');
+        return;
+    }
+    
+    // Calculate accurate document status - ONLY count uploaded
+    let uploadedCount = 0;
+    const totalDocs = 6;
+    
+    if (application.documents) {
+        uploadedCount = Object.values(application.documents).filter(doc => 
+            doc.uploaded
+        ).length;
+    }
+    
+    // Check if all documents are uploaded
+    if (uploadedCount === totalDocs) {
+        if (confirm('Are you sure you want to submit all documents? This action cannot be undone.')) {
+            // Update application status
+            application.status = 'documents-completed';
+            application.documentsSubmitted = true;
+            application.documentsSubmitDate = new Date().toISOString();
+            
+            if (!application.timeline) application.timeline = [];
+            application.timeline.push({
+                date: new Date().toISOString(),
+                event: 'All documents submitted for review'
+            });
+            
+            localStorage.setItem('registeredUsers', JSON.stringify(users));
+            
+            updateStudentDashboard();
+            alert('Documents submitted successfully! They are now under review.');
+        }
+    } else {
+        let message = `You need to upload all ${totalDocs} required documents.\n\n`;
+        message += `Currently: ${uploadedCount}/${totalDocs} uploaded`;
+        
+        alert(message);
+    }
+}
+
+function handleDocumentUpload(documentType, file, dataUrl) {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) return;
+    
+    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+    const currentUser = users.find(u => u.account?.username === user.username);
+    
+    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
+        alert('No application found!');
+        return;
+    }
+    
+    const application = currentUser.applications[0];
+    
+    // Check if application is rejected by admin
+    if (application.status === 'rejected' || application.adminReview?.decision === 'rejected') {
+        alert('Your application has been rejected. You cannot upload documents.');
+        return;
+    }
+    
+    // Initialize documents object if it doesn't exist
+    if (!application.documents) {
+        application.documents = {};
+    }
+    
+    // Check if document type exists in the documents object
+    const docTypes = ['picture', 'birthcert', 'reportcard', 'goodmoral', 'tor', 'diploma'];
+    if (!docTypes.includes(documentType)) {
+        alert('Invalid document type!');
+        return;
+    }
+    
+    // Always allow document upload after application is submitted
+    // Upload the document
+    application.documents[documentType] = {
+        uploaded: true,
+        filename: file.name,
+        type: getDocumentTypeName(documentType),
+        verified: false,
+        dataUrl: dataUrl,
+        lastModified: new Date().toISOString()
+    };
+    
+    // Update timeline
+    if (!application.timeline) application.timeline = [];
+    const existingTimeline = application.timeline.filter(item => 
+        !item.event.includes(`Document "${documentType}" uploaded`)
+    );
+    existingTimeline.push({
+        date: new Date().toISOString(),
+        event: `Document "${getDocumentTypeName(documentType)}" uploaded`
+    });
+    application.timeline = existingTimeline;
+    
+    // Save to localStorage
+    localStorage.setItem('registeredUsers', JSON.stringify(users));
+    
+    // Update UI
+    updateStudentDashboard();
+    
+    // Show success message
+    showUploadNotification(`Document "${getDocumentTypeName(documentType)}" uploaded successfully!`);
+}
+
+// Helper function to get document display name
+function getDocumentTypeName(docType) {
+    const docNames = {
+        picture: '2x2 ID Picture',
+        birthcert: 'Birth Certificate',
+        reportcard: 'Report Card',
+        goodmoral: 'Good Moral Certificate',
+        tor: 'Transcript of Records',
+        diploma: 'High School Diploma'
+    };
+    return docNames[docType] || docType;
+}
+
+// Clean dashboard - no rejected document indicators
+function updateStudentDashboard() {
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user) return;
+    
+    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+    const currentUser = users.find(u => u.account?.username === user.username);
+    
+    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
+        return;
+    }
+    
+    const application = currentUser.applications[0];
+    
+    // Calculate accurate document counts - ONLY count uploaded
+    let uploadedCount = 0;
+    const totalDocs = 6;
+    
+    if (application.documents) {
+        uploadedCount = Object.values(application.documents).filter(doc => 
+            doc.uploaded
+        ).length;
+    }
+    
+    // Update document status in dashboard overview
+    const documentsStatusText = document.getElementById('documentsStatusText');
+    const documentsStatusDesc = document.getElementById('documentsStatusDesc');
+    const uploadedCountEl = document.getElementById('uploadedCount');
+    const totalCountEl = document.getElementById('totalCount');
+    
+    if (documentsStatusText) {
+        documentsStatusText.textContent = `${uploadedCount}/${totalDocs}`;
+        if (uploadedCount === 0) {
+            documentsStatusText.className = 'status-value status-not-started';
+        } else if (uploadedCount === totalDocs) {
+            documentsStatusText.className = 'status-value status-approved';
+        } else {
+            documentsStatusText.className = 'status-value status-in-progress';
+        }
+    }
+    
+    if (documentsStatusDesc) {
+        if (uploadedCount === 0) {
+            documentsStatusDesc.textContent = 'No documents uploaded yet';
+        } else if (uploadedCount === totalDocs) {
+            documentsStatusDesc.textContent = 'All documents uploaded';
+        } else {
+            documentsStatusDesc.textContent = `${uploadedCount} out of ${totalDocs} documents uploaded`;
+        }
+    }
+    
+    if (uploadedCountEl) uploadedCountEl.textContent = uploadedCount;
+    if (totalCountEl) totalCountEl.textContent = totalDocs;
+    
+    // Update progress circle
+    const progressPercentage = Math.round((uploadedCount / totalDocs) * 100);
+    const circlePath = document.getElementById('circlePath');
+    const circleText = document.getElementById('circleText');
+    
+    if (circlePath) {
+        circlePath.style.strokeDasharray = `${progressPercentage}, 100`;
+    }
+    
+    if (circleText) {
+        circleText.textContent = `${progressPercentage}%`;
+    }
+    
+    // Update progress bar
+    updateProgressBar(application, uploadedCount, 0);
+}
+
+// Update progress bar function
+function updateProgressBar(application, uploadedCount, rejectedCount) {
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+    const step4 = document.getElementById('step4');
+    const progressBar = document.getElementById('progressBar');
+    
+    if (!step1 || !progressBar) return;
+    
+    // Reset all steps
+    [step1, step2, step3, step4].forEach(step => {
+        step.className = 'step';
+    });
+    
+    let progressPercentage = 0;
+    
+    // Step 1: Application
+    if (application.program) {
+        step1.classList.add('completed');
+        progressPercentage = 25;
+    }
+    
+    // Step 2: Documents
+    if (uploadedCount > 0) {
+        step2.classList.add('active');
+        progressPercentage = 50;
+        
+        if (uploadedCount === 6) {
+            step2.classList.remove('active');
+            step2.classList.add('completed');
+        }
+    }
+    
+    // Step 3: Exam
+    if (application.exam && application.exam.taken) {
+        step3.classList.add('active');
+        progressPercentage = 75;
+        
+        if (application.exam.passed) {
+            step3.classList.remove('active');
+            step3.classList.add('completed');
+        }
+    }
+    
+    // Step 4: Complete
+    if (application.status === 'approved') {
+        step4.classList.add('completed');
+        progressPercentage = 100;
+    }
+    
+    // Update progress bar width
+    progressBar.style.width = `${progressPercentage}%`;
+}
+
+// Function to show upload notification
+function showUploadNotification(message) {
+    // Remove existing notification
+    const existingNotification = document.querySelector('.upload-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create new notification
+    const notification = document.createElement('div');
+    notification.className = 'upload-notification';
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="font-size: 20px;">✅</div>
+            <div>
+                <div style="font-weight: 500; color: var(--primary-blue);">Upload Successful</div>
+                <div style="font-size: 14px; color: var(--medium-gray);">${message}</div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
