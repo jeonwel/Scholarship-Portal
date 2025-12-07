@@ -303,13 +303,42 @@ function loadAllApplicants() {
                         allDocsUploaded
                     };
                     
-                    // NEW: Simplified status system
+                    // NEW: Check if applicant failed exam (score < 75)
                     let status = application.status;
+                    let examFailed = false;
                     
-                    // Convert old statuses to new system
-                    if (status === 'pending' || status === 'need-exam' || status === 'under-review' || 
+                    // Check exam score
+                    if (examData && (examData.taken || examData.completedAt)) {
+                        const scoreValue = examData.score && typeof examData.score === 'object' && 'percentage' in examData.score 
+                            ? examData.score.percentage 
+                            : (examData.score || 0);
+                        
+                        if (scoreValue < 75) {
+                            status = 'rejected';
+                            examFailed = true;
+                            // Update application status in storage if exam failed
+                            if (application.status !== 'rejected') {
+                                application.status = 'rejected';
+                                application.adminReview = {
+                                    reviewDate: new Date().toISOString(),
+                                    reviewer: 'System',
+                                    decision: 'rejected',
+                                    notes: 'Automatically rejected due to failing exam score'
+                                };
+                                
+                                if (!application.timeline) application.timeline = [];
+                                application.timeline.push({
+                                    date: new Date().toISOString(),
+                                    event: 'Application automatically rejected - Exam score below passing (75%)'
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Convert old statuses to new system if not rejected by exam
+                    if (!examFailed && (status === 'pending' || status === 'need-exam' || status === 'under-review' || 
                         status === 'applied' || status === 'documents-completed' || status === 'exam-completed' ||
-                        status === 'completed') {
+                        status === 'completed')) {
                         status = 'waiting';
                     }
                     
@@ -321,6 +350,18 @@ function loadAllApplicants() {
                     // Initialize interview status if not exists
                     if (!application.interviewStatus) {
                         application.interviewStatus = 'not-scheduled';
+                    }
+                    
+                    // Auto-update interview status based on interview date
+                    if (application.interviewDate && !application.interviewCompleted) {
+                        const interviewDate = new Date(application.interviewDate);
+                        const now = new Date();
+                        if (interviewDate <= now && application.interviewStatus === 'scheduled') {
+                            application.interviewStatus = 'completed';
+                            if (!application.interviewCompleted) {
+                                application.interviewCompleted = true;
+                            }
+                        }
                     }
                     
                     const applicant = {
@@ -335,7 +376,8 @@ function loadAllApplicants() {
                         exam: examData,
                         interviewStatus: application.interviewStatus,
                         interviewDate: application.interviewDate,
-                        interviewNotes: application.interviewNotes
+                        interviewNotes: application.interviewNotes,
+                        examFailed: examFailed // Flag to track if rejected by exam
                     };
                     
                     allApplicants.push(applicant);
@@ -359,6 +401,30 @@ function updateApplicantStatusesInStorage() {
         if (user.applications) {
             user.applications.forEach(application => {
                 if (application.status !== 'cancelled') {
+                    // Check exam score for auto-rejection
+                    if (application.exam && (application.exam.taken || application.exam.completedAt)) {
+                        const scoreValue = application.exam.score && typeof application.exam.score === 'object' && 'percentage' in application.exam.score 
+                            ? application.exam.score.percentage 
+                            : (application.exam.score || 0);
+                        
+                        if (scoreValue < 75 && application.status !== 'rejected') {
+                            application.status = 'rejected';
+                            application.adminReview = {
+                                reviewDate: new Date().toISOString(),
+                                reviewer: 'System',
+                                decision: 'rejected',
+                                notes: 'Automatically rejected due to failing exam score'
+                            };
+                            
+                            if (!application.timeline) application.timeline = [];
+                            application.timeline.push({
+                                date: new Date().toISOString(),
+                                event: 'Application automatically rejected - Exam score below passing (75%)'
+                            });
+                            updated = true;
+                        }
+                    }
+                    
                     // Check if admin rejected the application
                     if (application.adminReview?.decision === 'rejected') {
                         if (application.status !== 'rejected') {
@@ -375,6 +441,17 @@ function updateApplicantStatusesInStorage() {
                             updated = true;
                         }
                     }
+                    
+                    // Auto-update interview status based on date
+                    if (application.interviewDate && !application.interviewCompleted) {
+                        const interviewDate = new Date(application.interviewDate);
+                        const now = new Date();
+                        if (interviewDate <= now && application.interviewStatus === 'scheduled') {
+                            application.interviewStatus = 'completed';
+                            application.interviewCompleted = true;
+                            updated = true;
+                        }
+                    }
                 }
             });
         }
@@ -387,7 +464,6 @@ function updateApplicantStatusesInStorage() {
 
 function updateDashboard() {
     updateStatistics();
-    // Removed: loadRecentApplications(); - No longer needed
 }
 
 function updateStatistics() {
@@ -402,33 +478,20 @@ function updateStatistics() {
     document.getElementById('rejected').textContent = rejected;
 }
 
-// ===== UPDATED: Don't show applicants who failed the exam =====
+// ===== UPDATED: Show all applicants including those rejected by exam =====
 function loadApplicantsTable() {
     const tbody = document.getElementById('applicantsTableBody');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    // Filter applicants: don't show those who failed the exam (score < 75)
-    const displayApplicants = filteredApplicants.filter(applicant => {
-        // If exam is taken, check if passed
-        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
-            const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
-                ? applicant.exam.score.percentage 
-                : (applicant.exam.score || 0);
-            
-            // Don't show applicants who failed (score < 75)
-            if (scoreValue < 75) {
-                return false;
-            }
-        }
-        return true;
-    });
+    // Show all applicants including those rejected by exam
+    const displayApplicants = filteredApplicants;
     
     if (displayApplicants.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" class="empty-state">
+                <td colspan="10" class="empty-state">
                     <div class="empty-state-icon">👥</div>
                     <p>No applicants found matching your criteria</p>
                 </td>
@@ -452,6 +515,29 @@ function loadApplicantsTable() {
             examScore = `${scoreValue}%`;
         }
         
+        // Check if all 6 documents are uploaded
+        const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
+        
+        // Check if all uploaded documents are verified
+        let allDocsVerified = true;
+        if (applicant.documents) {
+            allDocsVerified = Object.values(applicant.documents).every(doc => 
+                !doc.uploaded || (doc.uploaded && doc.verified)
+            );
+        }
+        
+        // Check if exam is passed
+        const examPassed = applicant.exam && (applicant.exam.taken || applicant.exam.completedAt) && 
+            ((applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+                ? applicant.exam.score.percentage 
+                : (applicant.exam.score || 0)) >= 75);
+        
+        // Determine if approve button should be disabled - REMOVED interview requirement
+        const canApprove = applicant.status === 'waiting' && 
+            allDocsUploaded && 
+            allDocsVerified && 
+            examPassed;
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${applicant.applicationId || 'N/A'}</td>
@@ -466,11 +552,13 @@ function loadApplicantsTable() {
             <td>
                 <div class="action-buttons">
                     <button class="btn-icon btn-view" onclick="viewApplicant('${applicant.applicationId}')" title="View Details">👁️</button>
-                    ${applicant.status !== 'approved' && applicant.status !== 'rejected' ? `
-                        <button class="btn-icon btn-approve" onclick="approveApplication('${applicant.applicationId}')" title="Approve" ${applicant.status === 'approved' ? 'disabled style="opacity: 0.5;"' : ''}>✅</button>
-                        <button class="btn-icon btn-reject" onclick="rejectApplication('${applicant.applicationId}')" title="Reject" ${applicant.status === 'rejected' ? 'disabled style="opacity: 0.5;"' : ''}>❌</button>
+                    ${applicant.status === 'waiting' ? `
+                        <button class="btn-icon btn-approve" onclick="approveApplication('${applicant.applicationId}')" title="Approve" ${!canApprove ? 'disabled style="opacity: 0.5;"' : ''}>✅</button>
+                        <button class="btn-icon btn-reject" onclick="rejectApplication('${applicant.applicationId}')" title="Reject">❌</button>
                     ` : ''}
-                    <button class="btn-icon" onclick="updateInterviewStatus('${applicant.applicationId}')" title="Update Interview" style="background: #e1bee7; color: #7b1fa2;">📅</button>
+                    ${applicant.status !== 'rejected' ? `
+                        <button class="btn-icon" onclick="updateInterviewStatus('${applicant.applicationId}')" title="Schedule Interview" style="background: #e1bee7; color: #7b1fa2;">📅</button>
+                    ` : ''}
                 </div>
             </td>
         `;
@@ -485,6 +573,12 @@ function updateInterviewStatus(applicationId) {
         return;
     }
     
+    // Disable for rejected applicants
+    if (applicant.status === 'rejected') {
+        alert('Cannot schedule interview for rejected applicants!');
+        return;
+    }
+    
     currentInterviewAppId = applicationId;
     
     const interviewModal = document.getElementById('interviewModal');
@@ -493,19 +587,28 @@ function updateInterviewStatus(applicationId) {
         return;
     }
     
-    document.getElementById('interviewStatusSelect').value = applicant.interviewStatus || 'not-scheduled';
+    // Set current date/time as minimum for scheduling
+    const now = new Date();
+    const minDate = now.toISOString().slice(0, 16);
+    document.getElementById('interviewDate').min = minDate;
+    
+    // If already has interview date, pre-fill it
     document.getElementById('interviewDate').value = applicant.interviewDate || '';
     document.getElementById('interviewNotes').value = applicant.interviewNotes || '';
     
     interviewModal.style.display = 'flex';
 }
 
-function saveInterviewStatus() {
+function saveInterviewSchedule() {
     if (!currentInterviewAppId) return;
     
-    const interviewStatus = document.getElementById('interviewStatusSelect').value;
     const interviewDate = document.getElementById('interviewDate').value;
     const interviewNotes = document.getElementById('interviewNotes').value;
+    
+    if (!interviewDate) {
+        alert('Please select an interview date and time!');
+        return;
+    }
     
     // Update in localStorage (application data)
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
@@ -515,10 +618,19 @@ function saveInterviewStatus() {
         if (user.applications) {
             user.applications.forEach(app => {
                 if (app.applicationId === currentInterviewAppId) {
-                    app.interviewStatus = interviewStatus;
+                    // Set interview status to "scheduled" automatically
+                    app.interviewStatus = 'scheduled';
                     app.interviewDate = interviewDate;
                     app.interviewNotes = interviewNotes;
+                    app.interviewCompleted = false;
                     updated = true;
+                    
+                    // Add to timeline
+                    if (!app.timeline) app.timeline = [];
+                    app.timeline.push({
+                        date: new Date().toISOString(),
+                        event: `Interview scheduled for ${formatDateTime(interviewDate)}`
+                    });
                 }
             });
         }
@@ -528,16 +640,61 @@ function saveInterviewStatus() {
         localStorage.setItem('registeredUsers', JSON.stringify(users));
         loadAllApplicants();
         
-        if (currentViewSection === 'overview') {
-            // Nothing to load here since Recent Applications is removed
-        } else if (currentViewSection === 'applicants') {
+        if (currentViewSection === 'applicants') {
             loadApplicantsTable();
         }
         
         closeModal();
-        alert('Interview status updated successfully!');
+        alert('Interview scheduled successfully! The status has been automatically set to "Scheduled".');
     } else {
-        alert('Error updating interview status!');
+        alert('Error scheduling interview!');
+    }
+    
+    currentInterviewAppId = null;
+}
+
+function removeInterviewSchedule() {
+    if (!currentInterviewAppId) return;
+    
+    if (!confirm('Are you sure you want to remove the interview schedule?')) return;
+    
+    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+    let updated = false;
+    
+    users.forEach(user => {
+        if (user.applications) {
+            user.applications.forEach(app => {
+                if (app.applicationId === currentInterviewAppId) {
+                    // Reset interview status
+                    app.interviewStatus = 'not-scheduled';
+                    app.interviewDate = null;
+                    app.interviewNotes = null;
+                    app.interviewCompleted = false;
+                    updated = true;
+                    
+                    // Add to timeline
+                    if (!app.timeline) app.timeline = [];
+                    app.timeline.push({
+                        date: new Date().toISOString(),
+                        event: 'Interview schedule removed'
+                    });
+                }
+            });
+        }
+    });
+    
+    if (updated) {
+        localStorage.setItem('registeredUsers', JSON.stringify(users));
+        loadAllApplicants();
+        
+        if (currentViewSection === 'applicants') {
+            loadApplicantsTable();
+        }
+        
+        closeModal();
+        alert('Interview schedule removed successfully!');
+    } else {
+        alert('Error removing interview schedule!');
     }
     
     currentInterviewAppId = null;
@@ -565,6 +722,122 @@ function updateDocumentRejectionStorage(applicationId, documentId, reason, userD
     localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
 }
 
+// NEW: Store all documents of rejected applicants in documentRejectionReasons and clear them
+function archiveRejectedApplicantDocuments(applicationId, applicantData, rejectionReason) {
+    const timestamp = new Date().toISOString();
+    
+    if (applicantData.documents) {
+        Object.entries(applicantData.documents).forEach(([docType, docData]) => {
+            if (docData.uploaded && docData.filename) {
+                const rejectionKey = `${applicationId}_${docType}_application_rejection`;
+                
+                // Store in documentRejectionReasons with application rejection context
+                documentRejectionReasons[rejectionKey] = {
+                    applicationId: applicationId,
+                    documentId: docType,
+                    reason: `Application rejected: ${rejectionReason}`,
+                    rejectedBy: adminData.fullName || 'Admin',
+                    rejectionDate: timestamp,
+                    documentType: docType,
+                    studentName: `${applicantData.personal.firstName} ${applicantData.personal.lastName}`,
+                    studentEmail: applicantData.personal.email,
+                    originalData: {
+                        filename: docData.filename,
+                        type: docData.type || docType,
+                        uploadDate: docData.lastModified || applicantData.submittedDate,
+                        dataUrl: docData.dataUrl || null,
+                        verified: docData.verified || false
+                    },
+                    rejectionContext: 'application' // Flag to indicate this was part of application rejection
+                };
+            }
+        });
+    }
+    
+    localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+}
+
+// NEW: Clear all documents from applicant's application (like when admin rejects individual document)
+function clearApplicantDocuments(applicationId) {
+    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+    let updated = false;
+    
+    users.forEach(user => {
+        if (user.applications) {
+            user.applications.forEach(app => {
+                if (app.applicationId === applicationId) {
+                    // Clear all documents data - just like when admin rejects individual document
+                    app.documents = {
+                        picture: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: '2x2 ID Picture',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        },
+                        birthcert: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: 'Birth Certificate',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        },
+                        reportcard: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: 'Report Card',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        },
+                        goodmoral: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: 'Certificate of Good Moral Character',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        },
+                        tor: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: 'Transcript of Records (TOR)',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        },
+                        diploma: { 
+                            uploaded: false, 
+                            filename: null, 
+                            verified: false, 
+                            type: 'High School Diploma',
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        }
+                    };
+                    
+                    // Update application timeline
+                    if (!app.timeline) app.timeline = [];
+                    app.timeline.push({
+                        date: new Date().toISOString(),
+                        event: 'All documents archived and cleared due to application rejection'
+                    });
+                    
+                    updated = true;
+                }
+            });
+        }
+    });
+    
+    if (updated) {
+        localStorage.setItem('registeredUsers', JSON.stringify(users));
+    }
+    
+    return updated;
+}
+
 function loadDocumentsTable() {
     const tbody = document.getElementById('documentsTableBody');
     if (!tbody) return;
@@ -572,9 +845,9 @@ function loadDocumentsTable() {
     tbody.innerHTML = '';
     
     // Collect only documents that need admin action:
-    // 1. Uploaded but not verified
-    // 2. Not rejected (rejected documents are removed from localStorage)
-    let pendingDocuments = [];
+    // 1. Uploaded but not verified (pending) - ONLY show non-verified documents
+    // 2. DO NOT show verified documents anymore
+    let allDocuments = [];
     
     filteredApplicants.forEach(applicant => {
         // Skip rejected applicants
@@ -582,25 +855,16 @@ function loadDocumentsTable() {
             return;
         }
         
-        // Skip applicants who failed the exam
-        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
-            const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
-                ? applicant.exam.score.percentage 
-                : (applicant.exam.score || 0);
-            
-            if (scoreValue < 75) {
-                return;
-            }
+        // Skip approved applicants
+        if (applicant.status === 'approved') {
+            return;
         }
         
         if (applicant.documents) {
             Object.entries(applicant.documents).forEach(([docType, docData]) => {
-                // Show only documents that need admin action:
-                // - Uploaded
-                // - Not verified
-                // - Not rejected (rejected documents are already removed from localStorage)
+                // Show only pending documents (uploaded but not verified)
                 if (docData.uploaded && docData.filename && !docData.verified) {
-                    pendingDocuments.push({
+                    allDocuments.push({
                         studentName: `${applicant.personal.firstName} ${applicant.personal.lastName}`,
                         docType: docData.type || docType,
                         fileName: docData.filename,
@@ -615,19 +879,20 @@ function loadDocumentsTable() {
         }
     });
     
-    if (pendingDocuments.length === 0) {
+    if (allDocuments.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="empty-state">
                     <div class="empty-state-icon">📄</div>
-                    <p>No documents pending review</p>
+                    <p>No pending documents found for review</p>
+                    <p style="font-size: 12px; margin-top: 5px;">All uploaded documents have been verified</p>
                 </td>
             </tr>
         `;
         return;
     }
     
-    pendingDocuments.forEach(doc => {
+    allDocuments.forEach(doc => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${doc.studentName}</td>
@@ -638,7 +903,7 @@ function loadDocumentsTable() {
             <td>
                 <div class="action-buttons">
                     <button class="btn-icon btn-view" onclick="viewDocument('${doc.applicantId}', '${doc.docId}')" title="View Document">👁️</button>
-                    <button class="btn-icon btn-approve" onclick="verifyDocument('${doc.applicantId}', '${doc.docId}')" title="Approve">✅</button>
+                    <button class="btn-icon btn-approve" onclick="verifyDocument('${doc.applicantId}', '${doc.docId}')" title="Verify">✅</button>
                     <button class="btn-icon btn-reject" onclick="rejectDocument('${doc.applicantId}', '${doc.docId}')" title="Reject Document">❌</button>
                 </div>
             </td>
@@ -713,11 +978,7 @@ function viewDocument(applicationId, documentId) {
                 <button class="btn-filter" onclick="rejectDocument('${applicationId}', '${documentId}', true)" style="background: var(--danger);">
                     Reject Document
                 </button>
-                ` : `
-                <button class="btn-filter" disabled style="background: var(--medium-gray);">
-                    Already Verified
-                </button>
-                `}
+                ` : ''}
                 <button class="btn-filter" onclick="closeModal()" style="margin-left: 10px;">
                     Close
                 </button>
@@ -743,8 +1004,6 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
                     app.documents[documentId].verifiedBy = adminData.fullName || 'Admin';
                     app.documents[documentId].verificationDate = new Date().toISOString();
                     
-                    // Remove from pending review (document will vanish from review table)
-                    
                     // Check if all documents are verified
                     const allDocsVerified = app.documents ? 
                         Object.values(app.documents).every(doc => doc.uploaded && doc.verified) : false;
@@ -755,7 +1014,7 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
                             reviewDate: new Date().toISOString(),
                             reviewer: adminData.fullName || 'Admin',
                             decision: 'under-review',
-                            notes: 'All documents verified. Application ready for interview scheduling.'
+                            notes: 'All documents verified. Application ready for final review.'
                         };
                         
                         if (!app.timeline) app.timeline = [];
@@ -765,7 +1024,7 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
                         });
                         app.timeline.push({
                             date: new Date().toISOString(),
-                            event: 'Application complete - Ready for interview scheduling'
+                            event: 'Application complete - Ready for final approval'
                         });
                     }
                     
@@ -778,7 +1037,7 @@ function verifyDocument(applicationId, documentId, fromModal = false) {
     if (updated) {
         localStorage.setItem('registeredUsers', JSON.stringify(users));
         loadAllApplicants();
-        loadDocumentsTable(); // Document will vanish from review table
+        loadDocumentsTable(); // Document will be removed from review table
         
         if (fromModal) {
             closeModal();
@@ -806,16 +1065,14 @@ function rejectDocument(applicationId, documentId, fromModal = false) {
                     const docData = {
                         filename: app.documents[documentId].filename,
                         type: app.documents[documentId].type,
-                        lastModified: app.documents[documentId].lastModified
+                        lastModified: app.documents[documentId].lastModified,
+                        dataUrl: app.documents[documentId].dataUrl
                     };
                     
-                    // Store rejection in central storage
+                    // Store rejection in documentRejectionReasons
                     updateDocumentRejectionStorage(applicationId, documentId, reason, user, docData);
                     
-                    // COMPLETELY REMOVE the document from student's application
-                    delete app.documents[documentId];
-                    
-                    // Or reset to not uploaded state (cleaner approach)
+                    // Clear the document from student's application (just like when rejecting an application)
                     app.documents[documentId] = {
                         uploaded: false,
                         filename: null,
@@ -1169,15 +1426,17 @@ function viewApplicant(applicationId) {
         return;
     }
     
-    // Get document rejection reasons for this applicant
+    // Get document rejection reasons for this applicant (including application rejections)
     let documentRejectionsHTML = '';
     Object.entries(documentRejectionReasons).forEach(([key, rejection]) => {
         if (key.startsWith(applicationId + '_')) {
+            const isApplicationRejection = key.includes('_application_rejection') || rejection.rejectionContext === 'application';
             documentRejectionsHTML += `
-                <div style="background: #ffebee; padding: 10px; border-radius: 5px; margin: 5px 0; border-left: 3px solid #e53935;">
+                <div style="background: ${isApplicationRejection ? '#ffebee' : '#fff3e0'}; padding: 10px; border-radius: 5px; margin: 5px 0; border-left: 3px solid ${isApplicationRejection ? '#e53935' : '#ff9800'};">
                     <strong>${rejection.documentType}:</strong> ${rejection.reason}
                     <div style="font-size: 11px; color: #666; margin-top: 3px;">
                         Rejected by ${rejection.rejectedBy} on ${formatDate(rejection.rejectionDate)}
+                        ${isApplicationRejection ? ' (Application Rejection)' : ''}
                     </div>
                 </div>
             `;
@@ -1185,7 +1444,6 @@ function viewApplicant(applicationId) {
     });
     
     // Create documents grid HTML - Show documents that are uploaded or missing
-    // Don't label rejected documents as "rejected", just show as "missing"
     let documentsHTML = '';
     if (applicant.documents) {
         Object.entries(applicant.documents).forEach(([key, doc]) => {
@@ -1210,7 +1468,7 @@ function viewApplicant(applicationId) {
                 statusText = 'Pending';
             } else {
                 statusClass = 'badge-missing';
-                statusText = 'Missing'; // Don't show "rejected", just "missing"
+                statusText = 'Missing';
             }
             
             documentsHTML += `
@@ -1228,7 +1486,7 @@ function viewApplicant(applicationId) {
                             File: ${doc.filename}<br>
                             ${doc.verified ? `Verified by: ${doc.verifiedBy || 'Admin'} on ${formatDate(doc.verificationDate)}` : ''}
                         </p>
-                        ${doc.dataUrl && !doc.verified ? `
+                        ${doc.dataUrl ? `
                         <div style="margin-top: 10px;">
                             <button class="btn-filter" onclick="viewDocument('${applicant.applicationId}', '${key}')" style="padding: 5px 10px; font-size: 12px;">
                                 View Document
@@ -1240,6 +1498,29 @@ function viewApplicant(applicationId) {
             `;
         });
     }
+    
+    // Check if all 6 documents are uploaded
+    const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
+    
+    // Check if all uploaded documents are verified
+    let allDocsVerified = true;
+    if (applicant.documents) {
+        allDocsVerified = Object.values(applicant.documents).every(doc => 
+            !doc.uploaded || (doc.uploaded && doc.verified)
+        );
+    }
+    
+    // Check if exam is passed
+    const examPassed = applicant.exam && (applicant.exam.taken || applicant.exam.completedAt) && 
+        ((applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+            ? applicant.exam.score.percentage 
+            : (applicant.exam.score || 0)) >= 75);
+    
+    // Determine if approve button should be disabled - REMOVED interview requirement
+    const canApprove = applicant.status === 'waiting' && 
+        allDocsUploaded && 
+        allDocsVerified && 
+        examPassed;
     
     modalContent.innerHTML = `
         <div class="applicant-details">
@@ -1313,6 +1594,8 @@ function viewApplicant(applicationId) {
                 
                 <div style="margin-top: 15px; font-size: 14px; color: #666">
                     <strong>Document Progress:</strong> ${applicant.documentsStats?.uploadedCount || 0}/6 uploaded
+                    ${allDocsUploaded ? '✓ All documents uploaded' : '✗ Not all documents uploaded'}
+                    ${allDocsUploaded && allDocsVerified ? '✓ All documents verified' : allDocsUploaded ? '✗ Not all documents verified' : ''}
                 </div>
                 
                 ${documentRejectionsHTML ? `
@@ -1361,29 +1644,94 @@ function viewApplicant(applicationId) {
         </div>
         
         <div style="margin-top: 30px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-            ${applicant.status === 'approved' || applicant.status === 'rejected' ? '' : `
-                <button class="btn-filter" onclick="approveApplication('${applicant.applicationId}', true)" style="background: var(--success);">
+            ${applicant.status === 'waiting' ? `
+                <button class="btn-filter" onclick="approveApplication('${applicant.applicationId}', true)" style="background: var(--success);" ${!canApprove ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : ''}>
                     Approve Application
                 </button>
                 <button class="btn-filter" onclick="rejectApplication('${applicant.applicationId}', true)" style="background: var(--danger);">
                     Reject Application
                 </button>
-            `}
+            ` : ''}
             
-            <button class="btn-filter" onclick="updateInterviewStatus('${applicant.applicationId}')" style="background: #7b1fa2;">
-                Update Interview Status
-            </button>
+            ${applicant.status !== 'rejected' ? `
+                <button class="btn-filter" onclick="updateInterviewStatus('${applicant.applicationId}')" style="background: #7b1fa2;">
+                    ${applicant.interviewStatus === 'scheduled' ? 'Reschedule Interview' : 'Schedule Interview'}
+                </button>
+            ` : ''}
             
             <button class="btn-filter" onclick="closeModal()">
                 Close
             </button>
         </div>
+        
+        ${applicant.status === 'waiting' && !canApprove ? `
+        <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 8px; border-left: 4px solid #ff9800;">
+            <h5 style="color: #ef6c00; margin-bottom: 10px;">Approval Requirements Not Met:</h5>
+            <ul style="margin: 0; padding-left: 20px; color: #666;">
+                ${!allDocsUploaded ? '<li>All 6 documents must be uploaded</li>' : ''}
+                ${allDocsUploaded && !allDocsVerified ? '<li>All uploaded documents must be verified</li>' : ''}
+                ${!examPassed ? '<li>Exam must be passed (score ≥ 75%)</li>' : ''}
+            </ul>
+        </div>
+        ` : ''}
     `;
     
     document.getElementById('applicantModal').style.display = 'flex';
 }
 
 function approveApplication(applicationId, fromModal = false) {
+    const applicant = allApplicants.find(app => app.applicationId === applicationId);
+    if (!applicant) {
+        alert('Applicant not found!');
+        return;
+    }
+    
+    // Check if all 6 documents are uploaded
+    const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
+    if (!allDocsUploaded) {
+        alert('Cannot approve application! All 6 documents must be uploaded.');
+        return;
+    }
+    
+    // Check if all uploaded documents are verified
+    let allDocsVerified = true;
+    let unverifiedDocs = [];
+    
+    if (applicant.documents) {
+        Object.entries(applicant.documents).forEach(([docType, doc]) => {
+            if (doc.uploaded && !doc.verified) {
+                allDocsVerified = false;
+                unverifiedDocs.push(docType);
+            }
+        });
+    }
+    
+    if (!allDocsVerified) {
+        const docNames = {
+            picture: '2x2 ID Picture',
+            birthcert: 'Birth Certificate',
+            reportcard: 'Report Card',
+            goodmoral: 'Good Moral Certificate',
+            tor: 'Transcript of Records',
+            diploma: 'High School Diploma'
+        };
+        
+        const unverifiedDocNames = unverifiedDocs.map(doc => docNames[doc] || doc).join(', ');
+        alert(`Cannot approve application! The following documents are not verified: ${unverifiedDocNames}`);
+        return;
+    }
+    
+    // Check if exam is passed
+    const examPassed = applicant.exam && (applicant.exam.taken || applicant.exam.completedAt) && 
+        ((applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
+            ? applicant.exam.score.percentage 
+            : (applicant.exam.score || 0)) >= 75);
+    
+    if (!examPassed) {
+        alert('Cannot approve application! Applicant must pass the exam (score ≥ 75%).');
+        return;
+    }
+    
     if (!confirm('Are you sure you want to approve this application?')) return;
     
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
@@ -1393,15 +1741,30 @@ function approveApplication(applicationId, fromModal = false) {
         if (user.applications) {
             user.applications.forEach(app => {
                 if (app.applicationId === applicationId) {
+                    // ===== Automatically verify all documents when approving =====
+                    if (app.documents) {
+                        Object.entries(app.documents).forEach(([docType, doc]) => {
+                            if (doc.uploaded && !doc.verified) {
+                                doc.verified = true;
+                                doc.verifiedBy = adminData.fullName || 'Admin';
+                                doc.verificationDate = new Date().toISOString();
+                            }
+                        });
+                    }
+                    
                     app.status = 'approved';
                     app.adminReview = {
                         reviewDate: new Date().toISOString(),
                         reviewer: adminData.fullName || 'Admin',
                         decision: 'approved',
-                        notes: 'Application approved by administrator'
+                        notes: 'Application approved by administrator. All documents automatically verified.'
                     };
                     
                     if (!app.timeline) app.timeline = [];
+                    app.timeline.push({
+                        date: new Date().toISOString(),
+                        event: 'All documents automatically verified upon approval'
+                    });
                     app.timeline.push({
                         date: new Date().toISOString(),
                         event: 'Application approved by administrator'
@@ -1428,7 +1791,7 @@ function approveApplication(applicationId, fromModal = false) {
             refreshCurrentView();
         }
         
-        alert('Application approved successfully!');
+        alert('Application approved successfully! All documents have been automatically verified.');
     } else {
         alert('Error: Application not found!');
     }
@@ -1438,6 +1801,12 @@ function rejectApplication(applicationId, fromModal = false) {
     const reason = prompt('Please enter the reason for rejection:');
     if (!reason) return;
     
+    const applicant = allApplicants.find(app => app.applicationId === applicationId);
+    if (!applicant) {
+        alert('Applicant not found!');
+        return;
+    }
+    
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
     let updated = false;
     
@@ -1445,6 +1814,12 @@ function rejectApplication(applicationId, fromModal = false) {
         if (user.applications) {
             user.applications.forEach(app => {
                 if (app.applicationId === applicationId) {
+                    // NEW: Archive all documents to documentRejectionReasons before clearing
+                    archiveRejectedApplicantDocuments(applicationId, applicant, reason);
+                    
+                    // NEW: Clear all documents from applicant's application (just like when rejecting individual documents)
+                    clearApplicantDocuments(applicationId);
+                    
                     app.status = 'rejected';
                     app.adminReview = {
                         reviewDate: new Date().toISOString(),
@@ -1456,7 +1831,7 @@ function rejectApplication(applicationId, fromModal = false) {
                     if (!app.timeline) app.timeline = [];
                     app.timeline.push({
                         date: new Date().toISOString(),
-                        event: 'Application rejected by administrator'
+                        event: 'Application rejected by administrator - All documents archived to rejection storage'
                     });
                     
                     updated = true;
@@ -1480,7 +1855,7 @@ function rejectApplication(applicationId, fromModal = false) {
             refreshCurrentView();
         }
         
-        alert('Application rejected successfully!');
+        alert('Application rejected successfully! All documents have been archived to rejection storage and cleared from the application.');
     } else {
         alert('Error: Application not found!');
     }
@@ -1607,7 +1982,7 @@ function updateNotificationBadges() {
     
     let unverifiedDocs = 0;
     allApplicants.forEach(applicant => {
-        if (applicant.status !== 'rejected' && applicant.documents) {
+        if (applicant.status !== 'rejected' && applicant.status !== 'approved' && applicant.documents) {
             Object.values(applicant.documents).forEach(doc => {
                 if (doc.uploaded && !doc.verified) {
                     unverifiedDocs++;
@@ -1686,19 +2061,6 @@ function loadReportsSection() {
         </div>
         
         <div class="reports-container">
-            <div class="report-card clickable" onclick="generateReport('applicantsPerProgram')">
-                <div class="report-card-header">
-                    <div class="report-icon">📊</div>
-                    <h3>Applicants Per Program</h3>
-                </div>
-                <div class="report-card-content">
-                    <p>View total approved applicants per program with detailed breakdown</p>
-                </div>
-                <div class="report-card-footer">
-                    <span class="report-action">Generate Report →</span>
-                </div>
-            </div>
-            
             <div class="report-card clickable" onclick="generateReport('applicationStatus')">
                 <div class="report-card-header">
                     <div class="report-icon">📈</div>
@@ -1747,19 +2109,6 @@ function generateReport(reportType) {
     let reportDescription = '';
     
     switch(reportType) {
-        case 'applicantsPerProgram':
-            reportTitle = 'Approved Applicants Per Program Report';
-            reportDescription = 'Analysis of approved applicants distributed across different training programs';
-            const programCounts = {};
-            allApplicants.forEach(app => {
-                if (app.status === 'approved') {
-                    const program = getProgramName(app.program) || 'Unknown';
-                    programCounts[program] = (programCounts[program] || 0) + 1;
-                }
-            });
-            reportData = programCounts;
-            break;
-            
         case 'applicationStatus':
             reportTitle = 'Application Status Report';
             reportDescription = 'Comprehensive breakdown of all applications by current status';
@@ -2025,294 +2374,84 @@ window.createTestStudent = function() {
     alert('✅ Test student created!');
 };
 
-// Student dashboard functions
-function checkDocumentsCompletion() {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    if (!user) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    const currentUser = users.find(u => u.account?.username === user.username);
-    
-    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
-        alert('No application found!');
+// NEW: View all document rejections including application rejections
+window.viewDocumentRejections = function() {
+    if (Object.keys(documentRejectionReasons).length === 0) {
+        alert('No document rejections found!');
         return;
     }
     
-    const application = currentUser.applications[0];
+    let content = '<h3 style="color: var(--primary-blue); margin-bottom: 20px;">Document Rejection Archive</h3>';
     
-    // Check if application is rejected by admin
-    if (application.status === 'rejected' || application.adminReview?.decision === 'rejected') {
-        alert('Your application has been rejected. You cannot submit documents.');
-        return;
-    }
+    // Group by application
+    const groupedByApplication = {};
     
-    // Calculate accurate document status - ONLY count uploaded
-    let uploadedCount = 0;
-    const totalDocs = 6;
-    
-    if (application.documents) {
-        uploadedCount = Object.values(application.documents).filter(doc => 
-            doc.uploaded
-        ).length;
-    }
-    
-    // Check if all documents are uploaded
-    if (uploadedCount === totalDocs) {
-        if (confirm('Are you sure you want to submit all documents? This action cannot be undone.')) {
-            // Update application status
-            application.status = 'documents-completed';
-            application.documentsSubmitted = true;
-            application.documentsSubmitDate = new Date().toISOString();
-            
-            if (!application.timeline) application.timeline = [];
-            application.timeline.push({
-                date: new Date().toISOString(),
-                event: 'All documents submitted for review'
-            });
-            
-            localStorage.setItem('registeredUsers', JSON.stringify(users));
-            
-            updateStudentDashboard();
-            alert('Documents submitted successfully! They are now under review.');
+    Object.entries(documentRejectionReasons).forEach(([key, rejection]) => {
+        if (!groupedByApplication[rejection.applicationId]) {
+            groupedByApplication[rejection.applicationId] = [];
         }
-    } else {
-        let message = `You need to upload all ${totalDocs} required documents.\n\n`;
-        message += `Currently: ${uploadedCount}/${totalDocs} uploaded`;
-        
-        alert(message);
-    }
-}
-
-function handleDocumentUpload(documentType, file, dataUrl) {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    if (!user) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    const currentUser = users.find(u => u.account?.username === user.username);
-    
-    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
-        alert('No application found!');
-        return;
-    }
-    
-    const application = currentUser.applications[0];
-    
-    // Check if application is rejected by admin
-    if (application.status === 'rejected' || application.adminReview?.decision === 'rejected') {
-        alert('Your application has been rejected. You cannot upload documents.');
-        return;
-    }
-    
-    // Initialize documents object if it doesn't exist
-    if (!application.documents) {
-        application.documents = {};
-    }
-    
-    // Check if document type exists in the documents object
-    const docTypes = ['picture', 'birthcert', 'reportcard', 'goodmoral', 'tor', 'diploma'];
-    if (!docTypes.includes(documentType)) {
-        alert('Invalid document type!');
-        return;
-    }
-    
-    // Always allow document upload after application is submitted
-    // Upload the document
-    application.documents[documentType] = {
-        uploaded: true,
-        filename: file.name,
-        type: getDocumentTypeName(documentType),
-        verified: false,
-        dataUrl: dataUrl,
-        lastModified: new Date().toISOString()
-    };
-    
-    // Update timeline
-    if (!application.timeline) application.timeline = [];
-    const existingTimeline = application.timeline.filter(item => 
-        !item.event.includes(`Document "${documentType}" uploaded`)
-    );
-    existingTimeline.push({
-        date: new Date().toISOString(),
-        event: `Document "${getDocumentTypeName(documentType)}" uploaded`
-    });
-    application.timeline = existingTimeline;
-    
-    // Save to localStorage
-    localStorage.setItem('registeredUsers', JSON.stringify(users));
-    
-    // Update UI
-    updateStudentDashboard();
-    
-    // Show success message
-    showUploadNotification(`Document "${getDocumentTypeName(documentType)}" uploaded successfully!`);
-}
-
-// Helper function to get document display name
-function getDocumentTypeName(docType) {
-    const docNames = {
-        picture: '2x2 ID Picture',
-        birthcert: 'Birth Certificate',
-        reportcard: 'Report Card',
-        goodmoral: 'Good Moral Certificate',
-        tor: 'Transcript of Records',
-        diploma: 'High School Diploma'
-    };
-    return docNames[docType] || docType;
-}
-
-// Clean dashboard - no rejected document indicators
-function updateStudentDashboard() {
-    const user = JSON.parse(localStorage.getItem('currentUser'));
-    if (!user) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    const currentUser = users.find(u => u.account?.username === user.username);
-    
-    if (!currentUser || !currentUser.applications || currentUser.applications.length === 0) {
-        return;
-    }
-    
-    const application = currentUser.applications[0];
-    
-    // Calculate accurate document counts - ONLY count uploaded
-    let uploadedCount = 0;
-    const totalDocs = 6;
-    
-    if (application.documents) {
-        uploadedCount = Object.values(application.documents).filter(doc => 
-            doc.uploaded
-        ).length;
-    }
-    
-    // Update document status in dashboard overview
-    const documentsStatusText = document.getElementById('documentsStatusText');
-    const documentsStatusDesc = document.getElementById('documentsStatusDesc');
-    const uploadedCountEl = document.getElementById('uploadedCount');
-    const totalCountEl = document.getElementById('totalCount');
-    
-    if (documentsStatusText) {
-        documentsStatusText.textContent = `${uploadedCount}/${totalDocs}`;
-        if (uploadedCount === 0) {
-            documentsStatusText.className = 'status-value status-not-started';
-        } else if (uploadedCount === totalDocs) {
-            documentsStatusText.className = 'status-value status-approved';
-        } else {
-            documentsStatusText.className = 'status-value status-in-progress';
-        }
-    }
-    
-    if (documentsStatusDesc) {
-        if (uploadedCount === 0) {
-            documentsStatusDesc.textContent = 'No documents uploaded yet';
-        } else if (uploadedCount === totalDocs) {
-            documentsStatusDesc.textContent = 'All documents uploaded';
-        } else {
-            documentsStatusDesc.textContent = `${uploadedCount} out of ${totalDocs} documents uploaded`;
-        }
-    }
-    
-    if (uploadedCountEl) uploadedCountEl.textContent = uploadedCount;
-    if (totalCountEl) totalCountEl.textContent = totalDocs;
-    
-    // Update progress circle
-    const progressPercentage = Math.round((uploadedCount / totalDocs) * 100);
-    const circlePath = document.getElementById('circlePath');
-    const circleText = document.getElementById('circleText');
-    
-    if (circlePath) {
-        circlePath.style.strokeDasharray = `${progressPercentage}, 100`;
-    }
-    
-    if (circleText) {
-        circleText.textContent = `${progressPercentage}%`;
-    }
-    
-    // Update progress bar
-    updateProgressBar(application, uploadedCount, 0);
-}
-
-// Update progress bar function
-function updateProgressBar(application, uploadedCount, rejectedCount) {
-    const step1 = document.getElementById('step1');
-    const step2 = document.getElementById('step2');
-    const step3 = document.getElementById('step3');
-    const step4 = document.getElementById('step4');
-    const progressBar = document.getElementById('progressBar');
-    
-    if (!step1 || !progressBar) return;
-    
-    // Reset all steps
-    [step1, step2, step3, step4].forEach(step => {
-        step.className = 'step';
+        groupedByApplication[rejection.applicationId].push(rejection);
     });
     
-    let progressPercentage = 0;
-    
-    // Step 1: Application
-    if (application.program) {
-        step1.classList.add('completed');
-        progressPercentage = 25;
-    }
-    
-    // Step 2: Documents
-    if (uploadedCount > 0) {
-        step2.classList.add('active');
-        progressPercentage = 50;
+    Object.entries(groupedByApplication).forEach(([appId, rejections]) => {
+        const firstRejection = rejections[0];
+        const isApplicationRejection = rejections.some(r => 
+            r.rejectionContext === 'application' || r.reason.includes('Application rejected')
+        );
         
-        if (uploadedCount === 6) {
-            step2.classList.remove('active');
-            step2.classList.add('completed');
-        }
-    }
+        content += `
+            <div style="background: ${isApplicationRejection ? '#ffebee' : '#fff3e0'}; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid ${isApplicationRejection ? '#e53935' : '#ff9800'};">
+                <h4 style="color: ${isApplicationRejection ? '#e53935' : '#ef6c00'}; margin-top: 0;">
+                    ${firstRejection.studentName} - ${appId}
+                    ${isApplicationRejection ? ' (Application Rejected)' : ''}
+                </h4>
+                <p><strong>Email:</strong> ${firstRejection.studentEmail}</p>
+                
+                <div style="margin-top: 10px;">
+                    <strong>Rejected Documents:</strong> ${rejections.length} document(s)
+                    ${rejections.map((rejection, index) => `
+                        <div style="background: white; padding: 8px; margin-top: 5px; border-radius: 4px; font-size: 14px;">
+                            <div><strong>${index + 1}. ${rejection.documentType}:</strong></div>
+                            <div style="margin-left: 10px;">
+                                <div><strong>Reason:</strong> ${rejection.reason}</div>
+                                <div><strong>File:</strong> ${rejection.originalData?.filename || 'N/A'}</div>
+                                <div><strong>Rejected by:</strong> ${rejection.rejectedBy} on ${formatDate(rejection.rejectionDate)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    });
     
-    // Step 3: Exam
-    if (application.exam && application.exam.taken) {
-        step3.classList.add('active');
-        progressPercentage = 75;
-        
-        if (application.exam.passed) {
-            step3.classList.remove('active');
-            step3.classList.add('completed');
-        }
-    }
-    
-    // Step 4: Complete
-    if (application.status === 'approved') {
-        step4.classList.add('completed');
-        progressPercentage = 100;
-    }
-    
-    // Update progress bar width
-    progressBar.style.width = `${progressPercentage}%`;
-}
-
-// Function to show upload notification
-function showUploadNotification(message) {
-    // Remove existing notification
-    const existingNotification = document.querySelector('.upload-notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // Create new notification
-    const notification = document.createElement('div');
-    notification.className = 'upload-notification';
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="font-size: 20px;">✅</div>
-            <div>
-                <div style="font-weight: 500; color: var(--primary-blue);">Upload Successful</div>
-                <div style="font-size: 14px; color: var(--medium-gray);">${message}</div>
+    // Create a modal to display the archive
+    const archiveModal = document.createElement('div');
+    archiveModal.className = 'modal-overlay';
+    archiveModal.id = 'archiveModal';
+    archiveModal.innerHTML = `
+        <div class="modal" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Document Rejection Archive</h3>
+                <button class="modal-close" onclick="closeArchiveModal()">×</button>
+            </div>
+            <div class="modal-body" style="max-height: 500px; overflow-y: auto;">
+                ${content}
+            </div>
+            <div class="modal-footer" style="text-align: center; padding: 15px; border-top: 1px solid #eee;">
+                <button class="btn-filter" onclick="closeArchiveModal()">Close</button>
             </div>
         </div>
     `;
     
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 3 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.remove();
-        }
-    }, 3000);
+    document.body.appendChild(archiveModal);
+    archiveModal.style.display = 'flex';
+};
+
+// NEW: Function to close archive modal
+function closeArchiveModal() {
+    const archiveModal = document.getElementById('archiveModal');
+    if (archiveModal) {
+        archiveModal.style.display = 'none';
+        document.body.removeChild(archiveModal);
+    }
 }

@@ -1274,8 +1274,6 @@ body {
     display: block;
 }
 
-/* Add these styles to your existing CSS */
-
 /* Document card rejected state */
 .document-card.rejected {
     border-color: var(--danger);
@@ -1754,3 +1752,170 @@ body {
     100% { background: rgba(255, 68, 68, 0.6); }
 }
 
+/* Add this to fix the :has selector issue - use a class-based approach */
+.status-card.application-status-card {
+    display: none !important;
+}
+
+/* ===== NEW STYLES FOR MODAL SYSTEM ===== */
+
+/* Alert Modal System */
+.alert-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    display: none;
+}
+
+.alert-modal {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.alert-modal-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.alert-modal-icon {
+    font-size: 50px;
+    margin-bottom: 15px;
+}
+
+.alert-modal-title {
+    color: var(--primary-blue);
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.alert-modal-body {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.alert-modal-body p {
+    color: var(--medium-gray);
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.alert-modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.btn-modal-ok {
+    background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+    color: white;
+    padding: 12px 30px;
+    min-width: 120px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-modal-cancel {
+    background: var(--light-blue);
+    color: var(--primary-blue);
+    border: 2px solid var(--primary-blue);
+    padding: 12px 30px;
+    min-width: 120px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* Approval Congratulations Banner */
+.approval-congratulations-banner {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin: 20px 0;
+    border-left: 5px solid #ffd700;
+    box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
+    animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.approval-congratulations-banner h3 {
+    font-size: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.approval-congratulations-banner ul {
+    margin: 15px 0 0 20px;
+    font-size: 14px;
+}
+
+.approval-congratulations-banner li {
+    margin-bottom: 8px;
+    list-style-type: none;
+    position: relative;
+    padding-left: 25px;
+}
+
+.approval-congratulations-banner li:before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #ffd700;
+    font-weight: bold;
+}
+
+/* Disabled state for approved applicants */
+.approved-disabled {
+    opacity: 0.6 !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.btn-disabled {
+    background: #cccccc !important;
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+}
+
+.btn-disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}

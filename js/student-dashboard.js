@@ -14,12 +14,11 @@ window.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
     checkFailedAccountStatus();
     setupCountdownTimer();
+    checkForApproval();
 });
 
 function setupCountdownTimer() {
-    // Set up interval to update countdown every minute
     deletionCountdown = setInterval(updateCountdownDisplay, 60000);
-    // Initial update
     updateCountdownDisplay();
 }
 
@@ -27,7 +26,6 @@ function updateCountdownDisplay() {
     const failedExamCountdown = document.getElementById('countdownDays');
     const rejectedAppCountdown = document.getElementById('rejectedCountdownDays');
     
-    // Update exam failed countdown
     if (currentUser && currentUser.failedExam && currentUser.failedExam.markedForDeletion) {
         const deletionDate = new Date(currentUser.failedExam.deletionDate);
         const now = new Date();
@@ -37,7 +35,6 @@ function updateCountdownDisplay() {
         if (failedExamCountdown) {
             failedExamCountdown.textContent = diffDays;
             
-            // Update warning message based on days left
             if (diffDays <= 3) {
                 failedExamCountdown.className = 'countdown-timer countdown-low';
             } else {
@@ -45,18 +42,15 @@ function updateCountdownDisplay() {
             }
         }
         
-        // If time is up, delete account
         if (diffDays <= 0) {
             deleteFailedAccount();
         }
     }
     
-    // Update rejected application countdown (if application was rejected by admin)
     if (userApplication && userApplication.status === 'rejected' && 
         userApplication.adminReview && userApplication.adminReview.decision === 'rejected' &&
         !userApplication.exam.taken) {
         
-        // For admin-rejected applications, set deletion date 7 days from rejection
         const rejectionDate = new Date(userApplication.adminReview.reviewDate || new Date());
         const deletionDate = new Date(rejectionDate);
         deletionDate.setDate(deletionDate.getDate() + 7);
@@ -68,7 +62,6 @@ function updateCountdownDisplay() {
         if (rejectedAppCountdown) {
             rejectedAppCountdown.textContent = diffDays;
             
-            // Update warning message based on days left
             if (diffDays <= 3) {
                 rejectedAppCountdown.className = 'countdown-timer countdown-low';
             } else {
@@ -76,7 +69,6 @@ function updateCountdownDisplay() {
             }
         }
         
-        // If time is up, delete account
         if (diffDays <= 0) {
             deleteRejectedAccount();
         }
@@ -84,13 +76,49 @@ function updateCountdownDisplay() {
 }
 
 function deleteRejectedAccount() {
+    // First, move any remaining documents to rejection storage
+    if (userApplication && userApplication.documents) {
+        const documentRejectionReasons = JSON.parse(localStorage.getItem('documentRejectionReasons') || '{}');
+        const timestamp = new Date().toISOString();
+        
+        Object.keys(userApplication.documents).forEach(docKey => {
+            const doc = userApplication.documents[docKey];
+            if (doc.uploaded === true) {
+                const rejectionKey = `${userApplication.applicationId}_${docKey}`;
+                
+                documentRejectionReasons[rejectionKey] = {
+                    applicationId: userApplication.applicationId,
+                    documentId: docKey,
+                    reason: 'Account deleted - Application rejected by admin',
+                    rejectedBy: 'System',
+                    rejectionDate: timestamp,
+                    documentType: doc.type || docKey,
+                    studentName: `${currentUser.personal.firstName} ${currentUser.personal.lastName}`,
+                    studentEmail: currentUser.personal.email,
+                    originalData: {
+                        filename: doc.filename,
+                        filetype: doc.filetype,
+                        size: doc.size,
+                        dataUrl: doc.dataUrl,
+                        uploadDate: doc.lastModified ? new Date(doc.lastModified).toISOString() : timestamp
+                    }
+                };
+            }
+        });
+        
+        localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+    }
+    
+    // Then delete the user
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
     const updatedUsers = users.filter(u => u.account?.username !== currentUser.account.username);
     localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
     
     sessionStorage.clear();
-    alert('Your account has been deleted because your application was rejected.\n\nBetter luck next time!');
-    window.location.href = 'login.html';
+    showAlertModal('error', 'Account Deleted', 'Your account has been deleted because your application was rejected.\n\nBetter luck next time!');
+    setTimeout(() => {
+        window.location.href = 'login.html';
+    }, 2000);
 }
 
 function checkLoginStatus() {
@@ -99,45 +127,84 @@ function checkLoginStatus() {
     const userType = sessionStorage.getItem('userType');
 
     if (isLoggedIn !== 'true' || userType !== 'student') {
-        alert('Please login as a student to access the dashboard.');
-        window.location.href = 'login.html';
+        showAlertModal('error', 'Access Denied', 'Please login as a student to access the dashboard.');
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 2000);
         return;
     }
 
-    // Load user data from localStorage
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
     currentUser = users.find(u => u.account?.username === username);
     
     if (!currentUser) {
-        alert('User not found. Please register first.');
-        window.location.href = 'register.html';
+        showAlertModal('error', 'User Not Found', 'User not found. Please register first.');
+        setTimeout(() => {
+            window.location.href = 'register.html';
+        }, 2000);
         return;
     }
 
-    // Check if account is marked for deletion due to failed exam
     if (currentUser.failedExam && currentUser.failedExam.markedForDeletion) {
         const deletionDate = new Date(currentUser.failedExam.deletionDate);
         const daysLeft = Math.ceil((deletionDate - new Date()) / (1000 * 60 * 60 * 24));
         
         if (daysLeft <= 0) {
-            // Delete the account
             deleteFailedAccount();
             return;
         }
     }
 
-    // Load or create application data
     loadOrCreateApplication();
 }
 
 function deleteFailedAccount() {
+    // First, move any remaining documents to rejection storage
+    if (userApplication && userApplication.documents) {
+        const documentRejectionReasons = JSON.parse(localStorage.getItem('documentRejectionReasons') || '{}');
+        const timestamp = new Date().toISOString();
+        
+        Object.keys(userApplication.documents).forEach(docKey => {
+            const doc = userApplication.documents[docKey];
+            if (doc.uploaded === true) {
+                const rejectionKey = `${userApplication.applicationId}_${docKey}`;
+                
+                documentRejectionReasons[rejectionKey] = {
+                    applicationId: userApplication.applicationId,
+                    documentId: docKey,
+                    reason: 'Failed qualification exam',
+                    rejectedBy: 'System',
+                    rejectionDate: timestamp,
+                    documentType: doc.type || docKey,
+                    studentName: `${currentUser.personal.firstName} ${currentUser.personal.lastName}`,
+                    studentEmail: currentUser.personal.email,
+                    originalData: {
+                        filename: doc.filename,
+                        filetype: doc.filetype,
+                        size: doc.size,
+                        dataUrl: doc.dataUrl,
+                        uploadDate: doc.lastModified ? new Date(doc.lastModified).toISOString() : timestamp,
+                        examScore: userApplication.exam.score,
+                        examDate: userApplication.exam.dateTaken,
+                        program: userApplication.program
+                    }
+                };
+            }
+        });
+        
+        localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+    }
+    
+    // Then delete the user
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
     const updatedUsers = users.filter(u => u.account?.username !== currentUser.account.username);
     localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
     
     sessionStorage.clear();
-    alert('Your account has been deleted due to failing the exam. Better luck next school year!');
-    window.location.href = 'login.html';
+    showAlertModal('error', 'Account Deleted', 'Your account has been deleted due to failing the exam. Better luck next school year!');
+    setTimeout(() => {
+        window.location.href = 'login.html';
+    }, 2000);
 }
 
 function loadOrCreateApplication() {
@@ -145,10 +212,8 @@ function loadOrCreateApplication() {
         currentUser.applications = [];
     }
 
-    // Get active application (if any)
     userApplication = currentUser.applications.find(app => app.status !== 'cancelled');
     
-    // If no active application, create one with default values
     if (!userApplication && currentUser.applications.length === 0) {
         userApplication = {
             applicationId: generateApplicationId(),
@@ -185,9 +250,7 @@ function loadOrCreateApplication() {
         saveUserData();
     }
     
-    // Check if user failed exam and update application status
     if (userApplication && userApplication.exam.taken && !userApplication.exam.passed) {
-        // Automatic rejection for failed exam
         userApplication.status = 'rejected';
         userApplication.adminReview = {
             reviewDate: new Date().toISOString(),
@@ -197,15 +260,51 @@ function loadOrCreateApplication() {
             deletionDate: null
         };
         
-        // Mark all uploaded documents as rejected
+        // Move documents to rejection storage when exam fails
+        const documentRejectionReasons = JSON.parse(localStorage.getItem('documentRejectionReasons') || '{}');
+        const timestamp = new Date().toISOString();
+        
         Object.keys(userApplication.documents).forEach(docKey => {
-            if (userApplication.documents[docKey].uploaded) {
-                userApplication.documents[docKey].rejected = true;
-                userApplication.documents[docKey].adminNote = 'Document rejected due to failed exam';
+            const doc = userApplication.documents[docKey];
+            if (doc.uploaded === true) {
+                const rejectionKey = `${userApplication.applicationId}_${docKey}`;
+                
+                // Add to rejection storage using the same format as admin
+                documentRejectionReasons[rejectionKey] = {
+                    applicationId: userApplication.applicationId,
+                    documentId: docKey,
+                    reason: 'Failed qualification exam',
+                    rejectedBy: 'System',
+                    rejectionDate: timestamp,
+                    documentType: doc.type || docKey,
+                    studentName: `${currentUser.personal.firstName} ${currentUser.personal.lastName}`,
+                    studentEmail: currentUser.personal.email,
+                    originalData: {
+                        filename: doc.filename,
+                        filetype: doc.filetype,
+                        size: doc.size,
+                        dataUrl: doc.dataUrl,
+                        uploadDate: doc.lastModified ? new Date(doc.lastModified).toISOString() : timestamp,
+                        examScore: userApplication.exam.score,
+                        examDate: userApplication.exam.dateTaken,
+                        program: userApplication.program
+                    }
+                };
+                
+                // Clear from user storage
+                doc.uploaded = false;
+                doc.filename = null;
+                doc.filetype = null;
+                doc.size = null;
+                doc.dataUrl = null;
+                doc.verified = false;
+                doc.rejected = false;
+                doc.adminNote = '';
             }
         });
         
-        // Mark account for deletion
+        localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+        
         const deletionDate = new Date();
         deletionDate.setDate(deletionDate.getDate() + 7);
         
@@ -217,24 +316,22 @@ function loadOrCreateApplication() {
         };
         
         addTimelineEvent('Exam failed - Application automatically rejected');
+        addTimelineEvent('Documents moved to rejection storage');
         addTimelineEvent('Account marked for deletion in 7 days');
         
         saveUserData();
     }
     
-    // Check if application was rejected by admin and set deletion date
     if (userApplication && userApplication.status === 'rejected' && 
         userApplication.adminReview && userApplication.adminReview.decision === 'rejected' &&
         !userApplication.exam.taken) {
         
-        // If no deletion date is set, set it to 7 days from rejection
         if (!userApplication.adminReview.deletionDate) {
             const rejectionDate = new Date(userApplication.adminReview.reviewDate || new Date());
             const deletionDate = new Date(rejectionDate);
             deletionDate.setDate(deletionDate.getDate() + 7);
             userApplication.adminReview.deletionDate = deletionDate.toISOString();
             
-            // Also mark account for deletion
             currentUser.failedExam = {
                 markedForDeletion: true,
                 deletionDate: deletionDate.toISOString(),
@@ -254,29 +351,18 @@ function generateApplicationId() {
 }
 
 function loadUserData() {
-    // Update user info in header
     document.getElementById('userName').textContent = 
         `${currentUser.personal.firstName} ${currentUser.personal.lastName}`;
     document.getElementById('userEmail').textContent = currentUser.personal.email;
     
-    // Set avatar with first letter of first name
     const firstLetter = currentUser.personal.firstName.charAt(0).toUpperCase();
     document.getElementById('userAvatar').textContent = firstLetter;
     
-    // Update welcome message
     document.getElementById('welcomeMessage').textContent = 
         `Hello, ${currentUser.personal.firstName}!`;
 }
 
-function updateDashboard() {
-    updateProgressBar();
-    updateStatusCards();
-    updateNavigation();
-    
-    // Load appropriate content based on current section
-    showSection(currentSection);
-}
-
+// ===== FIXED: UPDATED PROGRESS BAR FUNCTION =====
 function updateProgressBar() {
     if (!userApplication) return;
 
@@ -294,207 +380,282 @@ function updateProgressBar() {
     let progressWidth = '0%';
 
     if (userApplication.status === 'not-started') {
+        // Step 1: Not started
         currentStep = 0;
         progressWidth = '0%';
     } else if (userApplication.program) {
+        // Step 1 completed (applied)
         currentStep = 1;
         progressWidth = '25%';
         document.getElementById('step1').classList.add('completed');
         document.getElementById('step2').classList.add('active');
         
-        // Check if documents are uploaded
-        if (allDocumentsUploaded()) {
+        // Check if ALL 6 documents are uploaded
+        const allDocsUploaded = allDocumentsUploaded();
+        if (allDocsUploaded) {
+            // Step 2 completed (all documents uploaded)
             currentStep = 2;
             progressWidth = '50%';
             document.getElementById('step2').classList.add('completed');
             document.getElementById('step3').classList.add('active');
-        }
-        
-        // Check if exam is taken
-        if (userApplication.exam.taken) {
-            currentStep = 3;
-            progressWidth = '75%';
-            document.getElementById('step3').classList.add('completed');
-            document.getElementById('step4').classList.add('active');
-        }
-        
-        // Check if application is complete and pending
-        if (userApplication.status === 'pending' || userApplication.status === 'under-review') {
-            currentStep = 4;
-            progressWidth = '100%';
-            document.getElementById('step4').classList.add('completed');
+            
+            // Check if exam is taken
+            if (userApplication.exam.taken) {
+                // Step 3 completed (exam taken)
+                currentStep = 3;
+                progressWidth = '75%';
+                document.getElementById('step3').classList.add('completed');
+                document.getElementById('step4').classList.add('active');
+                
+                // Check if application is complete (passed exam and ready for review)
+                if (userApplication.exam.passed && 
+                    (userApplication.status === 'pending' || 
+                     userApplication.status === 'under-review' || 
+                     userApplication.status === 'accepted' || 
+                     userApplication.status === 'approved' ||
+                     userApplication.status === 'documents-completed')) {
+                    // Step 4 completed (application complete)
+                    currentStep = 4;
+                    progressWidth = '100%';
+                    document.getElementById('step4').classList.add('completed');
+                }
+            }
         }
     }
 
+    // Update progress bar width
     progressBar.style.width = progressWidth;
+    
+    // Debug log to help identify issues
+    console.log('Progress Bar Debug:', {
+        status: userApplication.status,
+        program: userApplication.program,
+        allDocsUploaded: allDocumentsUploaded(),
+        examTaken: userApplication.exam.taken,
+        examPassed: userApplication.exam.passed,
+        currentStep: currentStep,
+        progressWidth: progressWidth,
+        uploadedDocs: countUploadedDocuments()
+    });
+}
+
+// ===== FIXED: UPDATED ALL DOCUMENTS UPLOADED FUNCTION =====
+function allDocumentsUploaded() {
+    if (!userApplication || !userApplication.documents) return false;
+    
+    const docs = userApplication.documents;
+    const requiredDocs = ['picture', 'birthcert', 'reportcard', 'goodmoral', 'tor', 'diploma'];
+    
+    // Check if ALL 6 required documents are uploaded
+    const allUploaded = requiredDocs.every(docId => {
+        const doc = docs[docId];
+        return doc && doc.uploaded === true;
+    });
+    
+    console.log('Documents uploaded check:', {
+        requiredDocs: requiredDocs,
+        docStatus: requiredDocs.map(docId => ({
+            docId,
+            uploaded: docs[docId]?.uploaded,
+            filename: docs[docId]?.filename
+        })),
+        allUploaded: allUploaded
+    });
+    
+    return allUploaded;
+}
+
+// ===== NEW: HELPER FUNCTION TO COUNT UPLOADED DOCUMENTS =====
+function countUploadedDocuments() {
+    if (!userApplication || !userApplication.documents) return 0;
+    
+    let count = 0;
+    Object.values(userApplication.documents).forEach(doc => {
+        if (doc.uploaded === true) {
+            count++;
+        }
+    });
+    return count;
 }
 
 function updateStatusCards() {
     if (!userApplication) return;
 
-    // Application Status
-    const statusText = document.getElementById('applicationStatusText');
-    const statusDesc = document.getElementById('applicationStatusDesc');
+    const statusCards = document.querySelectorAll('.status-card');
+    statusCards.forEach(card => {
+        const h3 = card.querySelector('h3');
+        if (h3 && h3.textContent.includes('Application Status')) {
+            card.style.display = 'none';
+        }
+    });
     
-    switch(userApplication.status) {
-        case 'not-started':
-            statusText.textContent = 'Not Started';
-            statusText.className = 'status-value status-not-started';
-            statusDesc.textContent = 'You haven\'t started your application';
-            break;
-        case 'applied':
-            statusText.textContent = 'Applied';
-            statusText.className = 'status-value status-in-progress';
-            statusDesc.textContent = 'Program selected, complete remaining steps';
-            break;
-        case 'documents-completed':
-            statusText.textContent = 'Documents Done';
-            statusText.className = 'status-value status-in-progress';
-            statusDesc.textContent = 'Documents uploaded, take exam next';
-            break;
-        case 'exam-completed':
-            statusText.textContent = 'Exam Done';
-            statusText.className = 'status-value status-in-progress';
-            statusDesc.textContent = 'Exam completed, finalizing application';
-            break;
-        case 'pending':
-            statusText.textContent = 'Complete ✓';
-            statusText.className = 'status-value status-approved';
-            statusDesc.textContent = 'Wait for admin\'s approval and interview schedule';
-            break;
-        case 'under-review':
-            statusText.textContent = 'Under Review';
-            statusText.className = 'status-value status-pending';
-            statusDesc.textContent = 'Your application is being reviewed by admin';
-            break;
-        case 'accepted':
-            statusText.textContent = 'Accepted ✓';
-            statusText.className = 'status-value status-approved';
-            statusDesc.textContent = 'Congratulations! Interview scheduled';
-            break;
-        case 'rejected':
-            statusText.textContent = 'Rejected';
-            statusText.className = 'status-value status-rejected';
-            statusDesc.textContent = userApplication.exam.taken && !userApplication.exam.passed 
-                ? 'Failed exam - Account will be deleted' 
-                : 'Application not accepted - Account will be deleted';
-            break;
-    }
-
-    // Documents Status
     if (userApplication.documents) {
         const docs = userApplication.documents;
-        const uploadedDocs = Object.values(docs).filter(doc => doc.uploaded).length;
-        const rejectedDocs = Object.values(docs).filter(doc => doc.rejected).length;
-        const verifiedDocs = Object.values(docs).filter(doc => doc.verified).length;
+        
+        let uploadedDocs = 0;
+        Object.values(docs).forEach(doc => {
+            if (doc.uploaded === true) {
+                uploadedDocs++;
+            }
+        });
+        
+        const rejectedDocs = Object.values(docs).filter(doc => doc.rejected === true).length;
+        const verifiedDocs = Object.values(docs).filter(doc => doc.verified === true).length;
         const totalDocs = Object.keys(docs).length;
         
-        document.getElementById('documentsStatusText').textContent = `${uploadedDocs}/${totalDocs}`;
+        const documentsStatusText = document.getElementById('documentsStatusText');
+        const documentsStatusDesc = document.getElementById('documentsStatusDesc');
+        const documentsIndicator = document.getElementById('documentsIndicator');
         
-        if (uploadedDocs === 0) {
-            document.getElementById('documentsStatusText').className = 'status-value status-not-started';
-            document.getElementById('documentsStatusDesc').textContent = 'No documents uploaded';
-            document.getElementById('documentsIndicator').style.display = 'block';
-            document.getElementById('documentsIndicator').textContent = '⚠️ No documents uploaded';
-        } else if (verifiedDocs === totalDocs) {
-            document.getElementById('documentsStatusText').className = 'status-value status-approved';
-            document.getElementById('documentsStatusDesc').textContent = 'All documents verified';
-            document.getElementById('documentsIndicator').style.display = 'none';
-        } else if (rejectedDocs > 0) {
-            document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
-            document.getElementById('documentsStatusDesc').textContent = `${rejectedDocs} document(s) rejected`;
-            document.getElementById('documentsIndicator').style.display = 'block';
-            document.getElementById('documentsIndicator').textContent = `⚠️ ${rejectedDocs} document(s) rejected`;
-        } else if (uploadedDocs === totalDocs) {
-            document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
-            document.getElementById('documentsStatusDesc').textContent = 'Documents submitted, waiting verification';
-            document.getElementById('documentsIndicator').style.display = 'none';
-        } else {
-            document.getElementById('documentsStatusText').className = 'status-value status-in-progress';
-            document.getElementById('documentsStatusDesc').textContent = `${totalDocs - uploadedDocs} documents remaining`;
-            document.getElementById('documentsIndicator').style.display = 'block';
-            document.getElementById('documentsIndicator').textContent = `⚠️ ${totalDocs - uploadedDocs} documents missing`;
+        if (documentsStatusText) {
+            documentsStatusText.textContent = `${uploadedDocs}/${totalDocs}`;
+            
+            if (uploadedDocs === 0) {
+                documentsStatusText.className = 'status-value status-not-started';
+                if (documentsStatusDesc) documentsStatusDesc.textContent = 'No documents uploaded';
+                if (documentsIndicator) {
+                    documentsIndicator.style.display = 'block';
+                    documentsIndicator.textContent = '⚠️ No documents uploaded';
+                }
+            } else if (verifiedDocs === totalDocs) {
+                documentsStatusText.className = 'status-value status-approved';
+                if (documentsStatusDesc) documentsStatusDesc.textContent = 'All documents verified';
+                if (documentsIndicator) {
+                    documentsIndicator.style.display = 'none';
+                }
+            } else if (rejectedDocs > 0) {
+                documentsStatusText.className = 'status-value status-in-progress';
+                if (documentsStatusDesc) documentsStatusDesc.textContent = `${rejectedDocs} document(s) rejected`;
+                if (documentsIndicator) {
+                    documentsIndicator.style.display = 'block';
+                    documentsIndicator.textContent = `⚠️ ${rejectedDocs} document(s) rejected`;
+                }
+            } else if (uploadedDocs === totalDocs) {
+                documentsStatusText.className = 'status-value status-in-progress';
+                if (documentsStatusDesc) documentsStatusDesc.textContent = 'Documents submitted, waiting verification';
+                if (documentsIndicator) {
+                    documentsIndicator.style.display = 'none';
+                }
+            } else {
+                documentsStatusText.className = 'status-value status-in-progress';
+                if (documentsStatusDesc) documentsStatusDesc.textContent = `${totalDocs - uploadedDocs} documents remaining`;
+                if (documentsIndicator) {
+                    documentsIndicator.style.display = 'block';
+                    documentsIndicator.textContent = `⚠️ ${totalDocs - uploadedDocs} documents missing`;
+                }
+            }
+        }
+    } else {
+        const documentsStatusText = document.getElementById('documentsStatusText');
+        const documentsStatusDesc = document.getElementById('documentsStatusDesc');
+        
+        if (documentsStatusText) {
+            documentsStatusText.textContent = '0/6';
+            documentsStatusText.className = 'status-value status-not-started';
+        }
+        if (documentsStatusDesc) {
+            documentsStatusDesc.textContent = 'No documents uploaded';
         }
     }
 
-    // Exam Status
     const examText = document.getElementById('examStatusText');
     const examDesc = document.getElementById('examStatusDesc');
     
-    if (userApplication.exam.taken) {
-        examText.textContent = `${userApplication.exam.score}%`;
-        examText.className = userApplication.exam.passed ? 
-            'status-value status-approved' : 'status-value status-rejected';
-        
-        if (userApplication.exam.passed) {
-            examDesc.textContent = 'Passed ✓';
+    if (examText && examDesc) {
+        if (userApplication.exam && userApplication.exam.taken) {
+            examText.textContent = `${userApplication.exam.score}%`;
+            examText.className = userApplication.exam.passed ? 
+                'status-value status-approved' : 'status-value status-rejected';
+            
+            if (userApplication.exam.passed) {
+                examDesc.textContent = 'Passed ✓';
+            } else {
+                examDesc.textContent = 'Failed - Account will be deleted';
+            }
         } else {
-            examDesc.textContent = 'Failed - Account will be deleted';
+            examText.textContent = '--';
+            examDesc.textContent = 'Exam not taken yet';
+            examText.className = 'status-value status-not-started';
         }
-    } else {
-        examText.textContent = '--';
-        examDesc.textContent = 'Exam not taken yet';
-        examText.className = 'status-value status-not-started';
     }
 
-    // Last Updated
-    const now = new Date();
-    document.getElementById('lastUpdatedText').textContent = 
-        now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    document.getElementById('lastUpdatedDesc').textContent = 
-        'Today at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const lastUpdatedText = document.getElementById('lastUpdatedText');
+    const lastUpdatedDesc = document.getElementById('lastUpdatedDesc');
+    
+    if (lastUpdatedText && lastUpdatedDesc) {
+        const now = new Date();
+        lastUpdatedText.textContent = 
+            now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        lastUpdatedDesc.textContent = 
+            'Today at ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
 }
 
 function updateNavigation() {
-    // Show notifications based on application status
     const applyNotification = document.getElementById('applyNotification');
     const documentsNotification = document.getElementById('documentsNotification');
     const examNotification = document.getElementById('examNotification');
     const statusNotification = document.getElementById('statusNotification');
 
-    // Reset all notifications
-    applyNotification.style.display = 'none';
-    documentsNotification.style.display = 'none';
-    examNotification.style.display = 'none';
-    statusNotification.style.display = 'none';
+    if (applyNotification) applyNotification.style.display = 'none';
+    if (documentsNotification) documentsNotification.style.display = 'none';
+    if (examNotification) examNotification.style.display = 'none';
+    if (statusNotification) statusNotification.style.display = 'none';
 
     if (userApplication.status === 'not-started') {
-        applyNotification.style.display = 'inline-block';
-        applyNotification.textContent = '!';
+        if (applyNotification) {
+            applyNotification.style.display = 'inline-block';
+            applyNotification.textContent = '!';
+        }
     } else if (userApplication.program && !allDocumentsUploaded()) {
-        documentsNotification.style.display = 'inline-block';
-        documentsNotification.textContent = '!';
+        if (documentsNotification) {
+            documentsNotification.style.display = 'inline-block';
+            documentsNotification.textContent = '!';
+        }
     } else if (allDocumentsUploaded() && !userApplication.exam.taken) {
-        examNotification.style.display = 'inline-block';
-        examNotification.textContent = '!';
+        if (examNotification) {
+            examNotification.style.display = 'inline-block';
+            examNotification.textContent = '!';
+        }
     } else if (userApplication.exam.taken || userApplication.status === 'pending') {
-        statusNotification.style.display = 'inline-block';
-        statusNotification.textContent = '!';
+        if (statusNotification) {
+            statusNotification.style.display = 'inline-block';
+            statusNotification.textContent = '!';
+        }
     }
+}
+
+function updateDashboard() {
+    updateProgressBar();
+    updateStatusCards();
+    updateNavigation();
+    
+    showSection(currentSection);
+    checkForApproval();
 }
 
 // ===== SECTION MANAGEMENT =====
 function showSection(sectionId) {
-    // Hide all sections
     document.querySelectorAll('.content-section').forEach(section => {
         section.style.display = 'none';
     });
 
-    // Remove active class from all nav links
     document.querySelectorAll('.sidebar-nav a').forEach(link => {
         link.classList.remove('active');
     });
 
-    // Show selected section
-    document.getElementById(sectionId + 'Section').style.display = 'block';
+    const sectionElement = document.getElementById(sectionId + 'Section');
+    if (sectionElement) {
+        sectionElement.style.display = 'block';
+    }
     
-    // Add active class to clicked nav link
-    document.querySelector(`[onclick="showSection('${sectionId}')"]`).classList.add('active');
+    const navLink = document.querySelector(`[onclick="showSection('${sectionId}')"]`);
+    if (navLink) {
+        navLink.classList.add('active');
+    }
 
-    // Update current section
     currentSection = sectionId;
 
-    // Load section-specific content
     switch(sectionId) {
         case 'apply':
             loadProgramsSection();
@@ -512,6 +673,8 @@ function showSection(sectionId) {
             loadProfileSection();
             break;
     }
+    
+    checkForApproval();
 }
 
 // ===== APPLY SECTION =====
@@ -519,13 +682,14 @@ function loadProgramsSection() {
     const programsContainer = document.getElementById('programsContainer');
     const applicationForm = document.getElementById('applicationForm');
     
-    // Hide the application form
-    applicationForm.style.display = 'none';
+    if (!programsContainer) return;
     
-    // Clear existing content
+    if (applicationForm) {
+        applicationForm.style.display = 'none';
+    }
+    
     programsContainer.innerHTML = '';
     
-    // Check if user failed exam or application is rejected
     if ((userApplication.exam.taken && !userApplication.exam.passed) || userApplication.status === 'rejected') {
         programsContainer.innerHTML = `
             <div style="text-align: center; padding: 40px;">
@@ -542,9 +706,7 @@ function loadProgramsSection() {
         return;
     }
     
-    // Check if user already has an application
     if (userApplication && userApplication.program) {
-        // User already applied, show current application
         programsContainer.innerHTML = `
             <div style="text-align: center; padding: 40px; background: var(--light-blue); border-radius: 15px;">
                 <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
@@ -559,14 +721,13 @@ function loadProgramsSection() {
         return;
     }
 
-    // User hasn't applied yet, show program options
     const programs = [
         {
             id: 'wadt',
             name: 'Web Application Development Training (WADT)',
             description: 'Full-stack web development program',
             icon: '💻',
-            duration: '6 months',
+            duration: '3 Years',
             requirements: ['High School Graduate', 'Basic Computer Literacy', 'Passion for Technology']
         },
         {
@@ -574,7 +735,7 @@ function loadProgramsSection() {
             name: 'Hotel & Restaurant Technology (HRT)',
             description: 'Hospitality management program',
             icon: '🏨',
-            duration: '6 months',
+            duration: '3 Years',
             requirements: ['High School Graduate', 'Good Communication Skills', 'Interest in Hospitality']
         }
     ];
@@ -611,13 +772,15 @@ function showConfirmationModal(programId) {
     const programName = getProgramName(programId);
     pendingProgramSelection = programId;
     
-    // Update modal content
-    document.getElementById('modalTitle').textContent = `Apply for ${programName} Program`;
-    document.getElementById('modalMessage').textContent = 
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const modal = document.getElementById('confirmationModal');
+    
+    if (modalTitle) modalTitle.textContent = `Apply for ${programName} Program`;
+    if (modalMessage) modalMessage.textContent = 
         `Are you sure you want to apply for the ${programName} program? Once selected, you cannot change your program.`;
     
-    // Show modal
-    document.getElementById('confirmationModal').style.display = 'flex';
+    if (modal) modal.style.display = 'flex';
 }
 
 function confirmProgramSelection() {
@@ -628,38 +791,106 @@ function confirmProgramSelection() {
     userApplication.status = 'applied';
     userApplication.submittedDate = new Date().toISOString();
     
-    // Add to timeline
     addTimelineEvent('Program selected: ' + getProgramName(programId));
     addTimelineEvent('Application submitted successfully');
     
     saveUserData();
     updateDashboard();
     
-    // Hide modal
-    document.getElementById('confirmationModal').style.display = 'none';
+    const modal = document.getElementById('confirmationModal');
+    if (modal) modal.style.display = 'none';
     
-    // Show success message
-    alert('Application submitted successfully! Please proceed to upload your documents.');
+    showAlertModal('success', 'Application Submitted!', 
+        'Application submitted successfully! Please proceed to upload your documents.',
+        'You have 7 days to complete all requirements.');
     
-    // Switch to documents section
     showSection('documents');
     
-    // Reset pending selection
     pendingProgramSelection = null;
 }
 
 function cancelProgramSelection() {
-    // Hide modal
-    document.getElementById('confirmationModal').style.display = 'none';
+    const modal = document.getElementById('confirmationModal');
+    if (modal) modal.style.display = 'none';
     
-    // Reset pending selection
     pendingProgramSelection = null;
+}
+
+// ===== MODAL SYSTEM =====
+function showAlertModal(type, title, message, details = '', onConfirm = null) {
+    const modal = document.getElementById('alertModal');
+    const modalIcon = document.getElementById('alertModalIcon');
+    const modalTitle = document.getElementById('alertModalTitle');
+    const modalMessage = document.getElementById('alertModalMessage');
+    const modalDetails = document.getElementById('alertModalDetails');
+    const okBtn = document.getElementById('alertModalOkBtn');
+    const cancelBtn = document.getElementById('alertModalCancelBtn');
+    
+    const icons = {
+        'warning': '⚠️',
+        'success': '✅',
+        'error': '❌',
+        'info': 'ℹ️',
+        'congratulations': '🎉'
+    };
+    
+    modalIcon.textContent = icons[type] || '⚠️';
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+    
+    if (details) {
+        modalDetails.innerHTML = details;
+        modalDetails.style.display = 'block';
+        modalDetails.style.marginTop = '15px';
+        modalDetails.style.padding = '15px';
+        modalDetails.style.background = 'var(--light-blue)';
+        modalDetails.style.borderRadius = '8px';
+        modalDetails.style.fontSize = '14px';
+    } else {
+        modalDetails.innerHTML = '';
+        modalDetails.style.display = 'none';
+    }
+    
+    if (onConfirm) {
+        okBtn.textContent = 'Yes';
+        cancelBtn.style.display = 'inline-block';
+        
+        okBtn.replaceWith(okBtn.cloneNode(true));
+        cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+        
+        const newOkBtn = document.getElementById('alertModalOkBtn');
+        const newCancelBtn = document.getElementById('alertModalCancelBtn');
+        
+        newOkBtn.onclick = function() {
+            onConfirm();
+            closeAlertModal();
+        };
+        newCancelBtn.onclick = closeAlertModal;
+    } else {
+        okBtn.textContent = 'OK';
+        cancelBtn.style.display = 'none';
+        okBtn.onclick = closeAlertModal;
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeAlertModal() {
+    const modal = document.getElementById('alertModal');
+    modal.style.display = 'none';
+    
+    const modalDetails = document.getElementById('alertModalDetails');
+    modalDetails.innerHTML = '';
+    modalDetails.style.display = 'none';
 }
 
 // ===== DOCUMENTS SECTION =====
 function loadDocumentsSection() {
+    const documentsSection = document.getElementById('documentsSection');
+    if (!documentsSection) return;
+    
     if (!userApplication || !userApplication.program) {
-        document.getElementById('documentsSection').innerHTML = `
+        documentsSection.innerHTML = `
             <div class="content-header">
                 <h1>Upload Required Documents</h1>
                 <p>Please apply for a program first</p>
@@ -676,9 +907,8 @@ function loadDocumentsSection() {
         return;
     }
     
-    // Check if user failed exam or application is rejected
     if ((userApplication.exam.taken && !userApplication.exam.passed) || userApplication.status === 'rejected') {
-        document.getElementById('documentsSection').innerHTML = `
+        documentsSection.innerHTML = `
             <div class="content-header">
                 <h1>Upload Required Documents</h1>
                 <p>Documents upload disabled</p>
@@ -703,22 +933,28 @@ function loadDocumentsSection() {
 
     updateDocumentsSummary();
     renderDocumentsList();
+    checkForApproval();
 }
 
 function updateDocumentsSummary() {
     if (!userApplication || !userApplication.documents) return;
     
     const docs = userApplication.documents;
-    const uploadedDocs = Object.values(docs).filter(doc => doc.uploaded).length;
-    const rejectedDocs = Object.values(docs).filter(doc => doc.rejected).length;
+    let uploadedDocs = 0;
+    Object.values(docs).forEach(doc => {
+        if (doc.uploaded === true) {
+            uploadedDocs++;
+        }
+    });
+    const rejectedDocs = Object.values(docs).filter(doc => doc.rejected === true).length;
     const totalDocs = Object.keys(docs).length;
     const progress = Math.round((uploadedDocs / totalDocs) * 100);
     
-    // Update counts
-    document.getElementById('uploadedCount').textContent = uploadedDocs;
-    document.getElementById('totalCount').textContent = totalDocs;
+    const uploadedCount = document.getElementById('uploadedCount');
+    const totalCount = document.getElementById('totalCount');
+    if (uploadedCount) uploadedCount.textContent = uploadedDocs;
+    if (totalCount) totalCount.textContent = totalDocs;
     
-    // Show rejected documents info
     const rejectedInfo = document.getElementById('rejectedDocumentsInfo');
     if (rejectedInfo) {
         if (rejectedDocs > 0) {
@@ -729,7 +965,6 @@ function updateDocumentsSummary() {
         }
     }
     
-    // Update progress circle
     const circlePath = document.getElementById('circlePath');
     const circleText = document.getElementById('circleText');
     
@@ -738,7 +973,6 @@ function updateDocumentsSummary() {
         circleText.textContent = `${progress}%`;
     }
     
-    // Hide missing documents section initially
     const missingDocsElement = document.getElementById('missingDocuments');
     if (missingDocsElement) {
         missingDocsElement.style.display = 'none';
@@ -748,9 +982,10 @@ function updateDocumentsSummary() {
 
 function renderDocumentsList() {
     const documentsList = document.getElementById('documentsList');
+    if (!documentsList) return;
+    
     documentsList.innerHTML = '';
 
-    // Define documents in the specified order
     const documents = [
         {
             id: 'picture',
@@ -798,10 +1033,11 @@ function renderDocumentsList() {
 
     documents.forEach(doc => {
         const docData = userApplication.documents[doc.id];
-        const isUploaded = docData && docData.uploaded;
-        const isVerified = docData && docData.verified;
-        const isRejected = docData && docData.rejected;
+        const isUploaded = docData && docData.uploaded === true;
+        const isVerified = docData && docData.verified === true;
+        const isRejected = docData && docData.rejected === true;
         const hasPendingFile = pendingDocuments[doc.id];
+        const isApproved = userApplication.status === 'approved';
         
         let cardClass = 'document-card';
         if (isUploaded || hasPendingFile) {
@@ -818,20 +1054,18 @@ function renderDocumentsList() {
             cardClass += ' rejected';
         }
         
-        // Add disabled class if document is verified or application is rejected
         if (isVerified || userApplication.status === 'rejected' || 
-            (userApplication.exam.taken && !userApplication.exam.passed)) {
-            cardClass += ' document-disabled';
+            (userApplication.exam.taken && !userApplication.exam.passed) ||
+            isApproved) {
+            cardClass += ' document-disabled approved-disabled';
         }
         
         const documentCard = document.createElement('div');
         documentCard.className = cardClass;
         documentCard.id = `docCard_${doc.id}`;
         
-        // Create unique IDs for this document
         const previewId = `preview_${doc.id}`;
         
-        // Status message
         let statusMessage = '';
         let adminNote = '';
         if (isRejected) {
@@ -854,6 +1088,7 @@ function renderDocumentsList() {
                     ${doc.name}
                     ${isVerified ? '<span class="verified-badge">VERIFIED</span>' : ''}
                     ${isRejected ? '<span style="color: #f44336; font-size: 12px; margin-left: 8px;">(REJECTED)</span>' : ''}
+                    ${isApproved ? '<span style="color: #4caf50; font-size: 12px; margin-left: 8px;">(APPROVED)</span>' : ''}
                 </div>
                 <div class="document-status ${isRejected ? 'status-required' : (isVerified ? 'status-verified' : (isUploaded || hasPendingFile ? 'status-uploaded' : 'status-required'))}">
                     ${isRejected ? 'Rejected' : (isVerified ? 'Verified' : (isUploaded ? 'Saved' : hasPendingFile ? 'Ready to Submit' : 'Required'))}
@@ -866,7 +1101,7 @@ function renderDocumentsList() {
             
             ${adminNote}
             
-            ${(isUploaded || hasPendingFile) && !isVerified ? `
+            ${(isUploaded || hasPendingFile) && !isVerified && !isApproved ? `
             <div id="${previewId}" style="text-align: center; margin: 15px 0;">
                 ${getDocumentPreview(isUploaded ? docData.dataUrl : pendingDocuments[doc.id]?.dataUrl, 
                                   isUploaded ? docData.filename : pendingDocuments[doc.id]?.name, doc.id)}
@@ -884,53 +1119,65 @@ function renderDocumentsList() {
                 </div>
             </div>
             ` : `
-            <div class="upload-area" onclick="${!isVerified ? `document.getElementById('fileInput_${doc.id}').click()` : ''}">
-                <div class="upload-icon">${isVerified ? '🔒' : '📤'}</div>
+            <div class="upload-area" onclick="${!isVerified && !isApproved ? `document.getElementById('fileInput_${doc.id}').click()` : ''}">
+                <div class="upload-icon">${isVerified ? '🔒' : (isApproved ? '✅' : '📤')}</div>
                 <div class="upload-text">
-                    <h4>${isVerified ? 'Document Verified' : `Upload ${doc.id === 'picture' ? 'Picture' : 'File'}`}</h4>
-                    <p>${isVerified ? 'This document has been verified and cannot be changed' : 'Click to upload or drag and drop'}</p>
+                    <h4>${isApproved ? 'Application Approved' : (isVerified ? 'Document Verified' : `Upload ${doc.id === 'picture' ? 'Picture' : 'File'}`)}</h4>
+                    <p>${isApproved ? 'Your application has been approved. No changes allowed.' : (isVerified ? 'This document has been verified and cannot be changed' : 'Click to upload or drag and drop')}</p>
                     <p style="font-size: 12px;">${isVerified ? 'Verified by administrator' : `Max file size: 5MB • ${doc.accept}`}</p>
                 </div>
             </div>
             `}
             
-            ${!isVerified ? `<input type="file" id="fileInput_${doc.id}" style="display: none;" 
+            ${!isVerified && !isApproved ? `<input type="file" id="fileInput_${doc.id}" style="display: none;" 
                    accept="${doc.accept}" onchange="handleFileUpload('${doc.id}', this)">` : ''}
         `;
         
         documentsList.appendChild(documentCard);
     });
 
-    // Update submit button state
     updateSubmitButtonState();
 }
 
 function updateSubmitButtonState() {
     const submitBtn = document.getElementById('submitDocumentsBtn');
+    if (!submitBtn) return;
+    
     const pendingCount = Object.keys(pendingDocuments).length;
-    const savedCount = Object.values(userApplication.documents).filter(d => d.uploaded && !d.rejected).length;
+    let savedCount = 0;
+    Object.values(userApplication.documents).forEach(d => {
+        if (d.uploaded === true) {
+            savedCount++;
+        }
+    });
     const totalCount = Object.keys(userApplication.documents).length;
     
-    // Disable button if exam failed or application rejected
+    if (userApplication.status === 'approved') {
+        submitBtn.innerHTML = '✅ Application Approved - Documents Locked';
+        submitBtn.disabled = true;
+        submitBtn.className = 'btn btn-primary btn-disabled';
+        return;
+    }
+    
     if (userApplication.exam.taken && !userApplication.exam.passed || userApplication.status === 'rejected') {
         submitBtn.innerHTML = 'Uploads Disabled';
         submitBtn.disabled = true;
-        submitBtn.style.background = '#cccccc';
+        submitBtn.className = 'btn btn-primary btn-disabled';
         return;
     }
     
     if (savedCount === totalCount && pendingCount === 0) {
         submitBtn.innerHTML = '✅ All Documents Submitted';
         submitBtn.disabled = false;
-        submitBtn.style.background = 'linear-gradient(135deg, var(--success) 0%, #4caf50 100%)';
+        submitBtn.className = 'btn btn-primary';
     } else if (pendingCount > 0) {
         submitBtn.innerHTML = `Submit ${pendingCount} Pending Document(s)`;
         submitBtn.disabled = false;
-        submitBtn.style.background = 'linear-gradient(135deg, var(--success) 0%, #4caf50 100%)';
+        submitBtn.className = 'btn btn-primary';
     } else {
         submitBtn.innerHTML = `Submit All 6 Required Documents (${savedCount}/6)`;
         submitBtn.disabled = true;
-        submitBtn.style.background = 'linear-gradient(135deg, var(--primary-blue) 0%, #1976d2 100%)';
+        submitBtn.className = 'btn btn-primary';
     }
 }
 
@@ -976,18 +1223,18 @@ function handleFileUpload(docId, input) {
     const file = input.files[0];
     if (!file) return;
 
-    // Check file size (5MB limit)
     if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        showAlertModal('error', 'File Too Large', 'File size must be less than 5MB');
         input.value = '';
         return;
     }
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const wasPreviouslyUploaded = userApplication.documents[docId].uploaded;
-        const wasRejected = userApplication.documents[docId].rejected;
-        const previousFilename = userApplication.documents[docId].filename;
+        const wasPreviouslyUploaded = userApplication.documents[docId] && 
+            userApplication.documents[docId].uploaded === true;
+        const wasRejected = userApplication.documents[docId] && userApplication.documents[docId].rejected === true;
+        const previousFilename = userApplication.documents[docId] ? userApplication.documents[docId].filename : null;
         
         pendingDocuments[docId] = {
             name: file.name,
@@ -1004,7 +1251,6 @@ function handleFileUpload(docId, input) {
         renderDocumentsList();
         updateSubmitButtonState();
         
-        // Show notification
         const notification = document.createElement('div');
         notification.className = 'upload-notification';
         notification.style.cssText = `
@@ -1048,11 +1294,15 @@ function handleFileUpload(docId, input) {
 function checkDocumentsCompletion() {
     const missingDocsElement = document.getElementById('missingDocuments');
     const pendingCount = Object.keys(pendingDocuments).length;
-    const savedCount = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+    let savedCount = 0;
+    Object.values(userApplication.documents).forEach(d => {
+        if (d.uploaded === true) {
+            savedCount++;
+        }
+    });
     const totalCount = Object.keys(userApplication.documents).length;
-    const rejectedCount = Object.values(userApplication.documents).filter(d => d.rejected).length;
+    const rejectedCount = Object.values(userApplication.documents).filter(d => d.rejected === true).length;
     
-    // Check if there are pending documents to save
     if (pendingCount === 0 && savedCount < 6) {
         const missingDocs = [];
         const documentNames = {
@@ -1070,38 +1320,38 @@ function checkDocumentsCompletion() {
             }
         });
         
-        missingDocsElement.innerHTML = `
-            <div style="display: flex; align-items: flex-start; gap: 8px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
-                <span style="color: #ff9800; font-size: 20px;">⚠️</span>
-                <div>
-                    <strong style="color: #e65100;">No New Documents to Submit</strong>
-                    <p style="margin: 8px 0; color: #333;">
-                        You need to upload documents first. Currently saved: ${savedCount}/6
-                    </p>
-                    ${rejectedCount > 0 ? `
-                    <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
-                        ⚠️ ${rejectedCount} document(s) were rejected and need to be re-uploaded
+        if (missingDocsElement) {
+            missingDocsElement.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 8px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
+                    <span style="color: #ff9800; font-size: 20px;">⚠️</span>
+                    <div>
+                        <strong style="color: #e65100;">No New Documents to Submit</strong>
+                        <p style="margin: 8px 0; color: #333;">
+                            You need to upload documents first. Currently saved: ${savedCount}/6
+                        </p>
+                        ${rejectedCount > 0 ? `
+                        <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
+                            ⚠️ ${rejectedCount} document(s) were rejected and need to be re-uploaded
+                        </div>
+                        ` : ''}
+                        ${missingDocs.length > 0 ? `
+                        <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
+                            Missing Documents: ${missingDocs.join(', ')}
+                        </div>
+                        ` : ''}
                     </div>
-                    ` : ''}
-                    ${missingDocs.length > 0 ? `
-                    <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
-                        Missing Documents: ${missingDocs.join(', ')}
-                    </div>
-                    ` : ''}
                 </div>
-            </div>
-        `;
-        missingDocsElement.style.display = 'block';
-        missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            `;
+            missingDocsElement.style.display = 'block';
+            missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         return;
     }
     
-    // Track documents that were uploaded/changed
     const uploadedDocs = [];
     const changedDocs = [];
     const replacedRejectedDocs = [];
     
-    // Save pending documents
     Object.keys(pendingDocuments).forEach(docId => {
         const pendingDoc = pendingDocuments[docId];
         const docName = getDocumentDisplayName(docId);
@@ -1130,7 +1380,6 @@ function checkDocumentsCompletion() {
             });
         }
         
-        // Update document data
         userApplication.documents[docId] = {
             uploaded: true,
             filename: pendingDoc.name,
@@ -1141,20 +1390,22 @@ function checkDocumentsCompletion() {
             verified: false,
             rejected: false,
             adminNote: '',
-            type: userApplication.documents[docId].type || docId
+            type: userApplication.documents[docId] ? userApplication.documents[docId].type || docId : docId
         };
     });
     
-    // Clear pending documents
     pendingDocuments = {};
     
-    // Count uploaded documents
-    const newSavedCount = Object.values(userApplication.documents).filter(d => d.uploaded).length;
+    let newSavedCount = 0;
+    Object.values(userApplication.documents).forEach(d => {
+        if (d.uploaded === true) {
+            newSavedCount++;
+        }
+    });
     const totalDocs = Object.keys(userApplication.documents).length;
-    const newRejectedCount = Object.values(userApplication.documents).filter(d => d.rejected).length;
+    const newRejectedCount = Object.values(userApplication.documents).filter(d => d.rejected === true).length;
     const remainingCount = totalDocs - newSavedCount;
     
-    // Add timeline events
     if (replacedRejectedDocs.length > 0) {
         replacedRejectedDocs.forEach(doc => {
             addTimelineEvent(`Re-uploaded rejected document: ${doc.name} (${remainingCount} remaining)`);
@@ -1170,133 +1421,181 @@ function checkDocumentsCompletion() {
         }
     }
     
-    if (newSavedCount === totalDocs) {
-        // All documents are uploaded
+    // Check if ALL 6 documents are now uploaded
+    const allSixUploaded = allDocumentsUploaded();
+    
+    if (allSixUploaded) {
         if (newRejectedCount === 0) {
             userApplication.status = 'documents-completed';
             
-            // Auto-enable exam if all documents uploaded
+            // Check if exam is also passed
             if (userApplication.exam.taken && userApplication.exam.passed) {
                 userApplication.status = 'pending';
                 addTimelineEvent('All 6 documents submitted - Application complete');
                 addTimelineEvent('All requirements met - Application submitted for review');
                 
-                missingDocsElement.innerHTML = `
-                    <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-                        <span style="color: #4caf50; font-size: 20px;">✅</span>
-                        <div>
-                            <strong style="color: #2e7d32;">Congratulations! Application Complete</strong>
-                            <p style="margin: 8px 0; color: #333;">
-                                All ${totalDocs} documents have been saved.
-                            </p>
-                            <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                                <strong style="color: var(--primary-blue);">📋 Important Note:</strong>
-                                <p style="margin: 5px 0; color: #333;">
-                                    Your application is now <strong>complete</strong> and pending admin review.
-                                    Please wait for admin's approval and interview schedule notification.
+                // Update dashboard immediately before any redirect
+                updateDashboard();
+                
+                if (missingDocsElement) {
+                    missingDocsElement.innerHTML = `
+                        <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <span style="color: #4caf50; font-size: 20px;">✅</span>
+                            <div>
+                                <strong style="color: #2e7d32;">Congratulations! Application Complete</strong>
+                                <p style="margin: 8px 0; color: #333;">
+                                    All ${totalDocs} documents have been saved and exam passed!
                                 </p>
+                                <div style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px;">
+                                    <strong style="color: var(--primary-blue);">📋 Important Note:</strong>
+                                    <p style="margin: 5px 0; color: #333;">
+                                        Your application is now <strong>complete</strong> and pending admin review.
+                                        Please wait for admin's approval and interview schedule notification.
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
+                    `;
+                }
             } else {
                 addTimelineEvent('All 6 documents submitted successfully');
                 
-                // Auto-enable exam section
                 const examSection = document.getElementById('examSection');
                 if (examSection) {
                     examSection.classList.add('exam-auto-enabled');
                 }
                 
+                if (missingDocsElement) {
+                    missingDocsElement.innerHTML = `
+                        <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <span style="color: #4caf50; font-size: 20px;">✅</span>
+                            <div>
+                                <strong style="color: #2e7d32;">Documents Submitted Successfully!</strong>
+                                <p style="margin: 8px 0; color: #333;">
+                                    All ${totalDocs} documents have been saved.
+                                </p>
+                                <p style="color: var(--primary-blue); font-weight: bold; margin-top: 10px;">
+                                    ✅ Exam section is now enabled! You can take the qualification exam.
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            if (missingDocsElement) {
                 missingDocsElement.innerHTML = `
-                    <div style="display: flex; align-items: flex-start; gap: 8px; background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-                        <span style="color: #4caf50; font-size: 20px;">✅</span>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
+                        <span style="color: #ff9800; font-size: 20px;">⚠️</span>
                         <div>
-                            <strong style="color: #2e7d32;">Documents Submitted Successfully!</strong>
+                            <strong style="color: #e65100;">Documents Submitted with Rejections</strong>
                             <p style="margin: 8px 0; color: #333;">
-                                All ${totalDocs} documents have been saved.
+                                ${newSavedCount}/${totalDocs} documents saved, but ${newRejectedCount} document(s) were rejected by admin and need re-upload.
                             </p>
-                            <p style="color: var(--primary-blue); font-weight: bold; margin-top: 10px;">
-                                ✅ Exam section is now enabled! You can take the qualification exam.
-                            </p>
+                            <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
+                                ⚠️ Please re-upload the rejected documents
+                            </div>
                         </div>
                     </div>
                 `;
             }
-        } else {
-            missingDocsElement.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 8px; background: #fff3e0; padding: 15px; border-radius: 8px; border-left: 4px solid #ff9800;">
-                    <span style="color: #ff9800; font-size: 20px;">⚠️</span>
-                    <div>
-                        <strong style="color: #e65100;">Documents Submitted with Rejections</strong>
-                        <p style="margin: 8px 0; color: #333;">
-                            ${newSavedCount}/${totalDocs} documents saved, but ${newRejectedCount} document(s) were rejected by admin and need re-upload.
-                        </p>
-                        <div style="color: #d32f2f; font-weight: bold; margin-top: 10px;">
-                            ⚠️ Please re-upload the rejected documents
-                        </div>
-                    </div>
-                </div>
-            `;
             userApplication.status = 'documents-completed';
         }
         
-        saveUserData();
-        updateDashboard();
+        const success = saveUserData();
+        if (success) {
+            console.log('Documents saved successfully to localStorage');
+        } else {
+            console.error('Failed to save documents to localStorage');
+        }
         
-        // Auto-switch to exam section if all documents uploaded and not failed
+        // FIXED: Update ALL UI elements before any redirect
+        updateDashboard();
+        updateDocumentsSummary();
+        renderDocumentsList();
+        updateSubmitButtonState();
+        
+        // Force a brief pause to ensure UI updates are rendered
         setTimeout(() => {
             if (userApplication.exam.taken) {
                 if (userApplication.exam.passed && newRejectedCount === 0) {
                     showSection('status');
-                    alert('Congratulations! All requirements are complete. Your application is now pending review.\n\nPlease wait for admin\'s approval and interview schedule notification.');
+                    showAlertModal('success', 'Application Complete!', 
+                        'Congratulations! All requirements are complete. Your application is now pending review.',
+                        'Please wait for admin\'s approval and interview schedule notification.');
                 }
             } else if (!userApplication.exam.taken && newRejectedCount === 0) {
-                showSection('exam');
-                alert('Documents submitted successfully! You can now take the online exam.');
+                // Show 6/6 in the UI before redirecting to exam
+                showSection('documents'); // Stay in documents section briefly
+                
+                // Update the document count note to show 6/6 immediately
+                const documentsStatusText = document.getElementById('documentsStatusText');
+                if (documentsStatusText) {
+                    documentsStatusText.textContent = '6/6';
+                    documentsStatusText.className = 'status-value status-in-progress';
+                }
+                
+                const documentsStatusDesc = document.getElementById('documentsStatusDesc');
+                if (documentsStatusDesc) {
+                    documentsStatusDesc.textContent = 'Documents submitted, waiting verification';
+                }
+                
+                // Show success message with 6/6 confirmation
+                showAlertModal('success', 'Documents Submitted!', 
+                    'Documents submitted successfully! You have uploaded all 6 required documents (6/6).\n\nYou can now take the online exam.',
+                    'Note: All 6 documents are saved and ready for verification.');
+                
+                // Then redirect to exam after a brief delay
+                setTimeout(() => {
+                    showSection('exam');
+                }, 1500);
             }
-        }, 1000);
+        }, 500);
     } else {
-        // Not all documents uploaded yet
         const remainingDocs = totalDocs - newSavedCount;
         const uploadedCount = newSavedCount - savedCount;
         
-        saveUserData();
-        updateDashboard();
+        const success = saveUserData();
+        if (success) {
+            console.log('Partial documents saved to localStorage');
+        } else {
+            console.error('Failed to save partial documents to localStorage');
+        }
         
-        // Show partial success message
-        missingDocsElement.innerHTML = `
-            <div style="display: flex; align-items: flex-start; gap: 8px; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
-                <span style="color: var(--primary-blue); font-size: 20px;">📄</span>
-                <div>
-                    <strong style="color: var(--primary-blue);">Documents Saved</strong>
-                    <p style="margin: 8px 0; color: #333;">
-                        ${uploadedCount} document(s) saved successfully. Progress: ${newSavedCount}/${totalDocs}
-                    </p>
-                    ${newRejectedCount > 0 ? `
-                    <div style="color: #d32f2f; font-weight: bold; margin-top: 5px;">
-                        ⚠️ ${newRejectedCount} document(s) were rejected and need re-upload
+        updateDashboard();
+        updateDocumentsSummary();
+        renderDocumentsList();
+        updateSubmitButtonState();
+        
+        if (missingDocsElement) {
+            missingDocsElement.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 8px; background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary-blue);">
+                    <span style="color: var(--primary-blue); font-size: 20px;">📄</span>
+                    <div>
+                        <strong style="color: var(--primary-blue);">Documents Saved</strong>
+                        <p style="margin: 8px 0; color: #333;">
+                            ${uploadedCount} document(s) saved successfully. Progress: ${newSavedCount}/${totalDocs}
+                        </p>
+                        ${newRejectedCount > 0 ? `
+                        <div style="color: #d32f2f; font-weight: bold; margin-top: 5px;">
+                            ⚠️ ${newRejectedCount} document(s) were rejected and need re-upload
+                        </div>
+                        ` : ''}
+                        ${remainingDocs > 0 ? `
+                        <div style="color: #ff9800; font-weight: bold; margin-top: 5px;">
+                            Still missing ${remainingDocs} document(s)
+                        </div>
+                        ` : ''}
                     </div>
-                    ` : ''}
-                    ${remainingDocs > 0 ? `
-                    <div style="color: #ff9800; font-weight: bold; margin-top: 5px;">
-                        Still missing ${remainingDocs} document(s)
-                    </div>
-                    ` : ''}
                 </div>
-            </div>
-        `;
-        missingDocsElement.style.display = 'block';
+            `;
+            missingDocsElement.style.display = 'block';
+        }
+        
+        if (missingDocsElement) {
+            missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
-    
-    if (missingDocsElement) {
-        missingDocsElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    // Refresh the documents list
-    renderDocumentsList();
-    updateDocumentsSummary();
-    updateSubmitButtonState();
 }
 
 function getDocumentDisplayName(docId) {
@@ -1311,17 +1610,13 @@ function getDocumentDisplayName(docId) {
     return names[docId] || docId;
 }
 
-function allDocumentsUploaded() {
-    if (!userApplication || !userApplication.documents) return false;
-    const docs = userApplication.documents;
-    // Rejected documents still count as uploaded slots
-    return Object.values(docs).every(doc => doc.uploaded);
-}
-
-// ===== EXAM SECTION =====
+// ===== FIXED: EXAM SECTION =====
 function loadExamSection() {
+    const examSection = document.getElementById('examSection');
+    if (!examSection) return;
+    
     if (!userApplication || !userApplication.program) {
-        document.getElementById('examSection').innerHTML = `
+        examSection.innerHTML = `
             <div class="content-header">
                 <h1>Online Qualification Exam</h1>
                 <p>Please apply for a program and upload documents first</p>
@@ -1343,8 +1638,10 @@ function loadExamSection() {
         return;
     }
     
+    // Use the proper allDocumentsUploaded function
     if (!allDocumentsUploaded()) {
-        document.getElementById('examSection').innerHTML = `
+        const uploadedCount = countUploadedDocuments();
+        examSection.innerHTML = `
             <div class="content-header">
                 <h1>Online Qualification Exam</h1>
                 <p>Please upload all documents first</p>
@@ -1353,6 +1650,9 @@ function loadExamSection() {
                 <div style="font-size: 48px; margin-bottom: 20px;">📄</div>
                 <h3 style="color: var(--primary-blue); margin-bottom: 15px;">Documents Required</h3>
                 <p>You need to upload all 6 required documents before taking the exam.</p>
+                <p style="color: var(--danger); margin: 15px 0; font-weight: 500; background: #ffebee; padding: 10px; border-radius: 8px;">
+                    Currently uploaded: ${uploadedCount}/6 documents
+                </p>
                 <button class="btn btn-primary" style="margin-top: 20px;" onclick="showSection('documents')">
                     Upload Documents Now
                 </button>
@@ -1361,120 +1661,147 @@ function loadExamSection() {
         return;
     }
     
-    // User is eligible for exam
     const examTitle = document.getElementById('examProgramTitle');
     const examDescription = document.getElementById('examDescription');
     const examStatusInfo = document.getElementById('examStatusInfo');
     const startExamBtn = document.getElementById('startExamBtn');
-    const examSection = document.getElementById('examSection');
     
-    examTitle.textContent = `${getProgramName(userApplication.program)} Qualification Exam`;
-    examDescription.textContent = `Take the qualification exam for the ${getProgramName(userApplication.program)} program. This exam will test your basic knowledge and aptitude for the program.`;
+    if (examTitle) examTitle.textContent = `${getProgramName(userApplication.program)} Qualification Exam`;
+    if (examDescription) examDescription.textContent = `Take the qualification exam for the ${getProgramName(userApplication.program)} program. This exam will test your basic knowledge and aptitude for the program.`;
     
-    // Add auto-enabled class if all documents uploaded
     if (allDocumentsUploaded() && !userApplication.exam.taken) {
         examSection.classList.add('exam-auto-enabled');
     }
     
     if (userApplication.exam.taken) {
         if (!userApplication.exam.passed) {
-            // Show failure message with consequences
+            if (examStatusInfo) {
+                examStatusInfo.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
+                        <h4 style="color: var(--danger); margin-bottom: 15px;">Exam Failed</h4>
+                        <p>Score: <strong style="color: var(--danger);">${userApplication.exam.score}%</strong> (Passing: 75%)</p>
+                        <p>Date Taken: ${userApplication.exam.dateTaken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--'}</p>
+                        <div style="background: #ffebee; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: left;">
+                            <h5 style="color: var(--danger); margin-bottom: 10px;">⚠️ Important Consequences:</h5>
+                            <ul style="margin: 0; padding-left: 20px;">
+                                <li>No retakes allowed for this application</li>
+                                <li>Document uploads are now disabled</li>
+                                <li>Your account will be deleted in 7 days</li>
+                                <li>Better luck next school year!</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            if (examStatusInfo) {
+                examStatusInfo.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
+                        <h4 style="color: var(--success); margin-bottom: 10px;">Exam Passed</h4>
+                        <p>Score: <strong>${userApplication.exam.score}%</strong> (Passing: 75%)</p>
+                        <p>Date Taken: ${userApplication.exam.dateTaken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--'}</p>
+                        ${allDocumentsUploaded() ? 
+                            `<div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                <h5 style="color: #2e7d32; margin-bottom: 10px;">🎉 Application Complete!</h5>
+                                <p>All requirements are now complete. Your application will be reviewed by admin.</p>
+                                <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                                    <strong>Note:</strong> Wait for admin's approval and interview schedule notification.
+                                </p>
+                            </div>` :
+                            `<p style="color: var(--medium-gray); font-size: 14px; margin-top: 10px;">
+                                Exam passed! Now complete your document submission.
+                            </p>`
+                        }
+                    </div>
+                `;
+            }
+        }
+        if (startExamBtn) {
+            startExamBtn.textContent = 'Exam Already Taken';
+            startExamBtn.disabled = true;
+            startExamBtn.className = 'btn btn-primary btn-start-exam btn-disabled';
+        }
+    } else {
+        if (examStatusInfo) {
             examStatusInfo.innerHTML = `
                 <div style="text-align: center;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">❌</div>
-                    <h4 style="color: var(--danger); margin-bottom: 15px;">Exam Failed</h4>
-                    <p>Score: <strong style="color: var(--danger);">${userApplication.exam.score}%</strong> (Passing: 75%)</p>
-                    <p>Date Taken: ${userApplication.exam.dateTaken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--'}</p>
-                    <div style="background: #ffebee; padding: 20px; border-radius: 10px; margin-top: 20px; text-align: left;">
-                        <h5 style="color: var(--danger); margin-bottom: 10px;">⚠️ Important Consequences:</h5>
-                        <ul style="margin: 0; padding-left: 20px;">
-                            <li>No retakes allowed for this application</li>
-                            <li>Document uploads are now disabled</li>
-                            <li>Your account will be deleted in 7 days</li>
-                            <li>Better luck next school year!</li>
+                    <div style="font-size: 32px; margin-bottom: 10px;">📝</div>
+                    <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Ready to Take Exam</h4>
+                    <p>You have 5 minutes to complete 16 questions.</p>
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <h5 style="color: var(--primary-blue); margin-bottom: 10px;">⚠️ Important Notice:</h5>
+                        <ul style="margin: 0; padding-left: 20px; text-align: left;">
+                            <li>You can only take this exam <strong>once</strong></li>
+                            <li>If you fail, you cannot retake it</li>
+                            <li>Make sure you're ready before starting!</li>
                         </ul>
                     </div>
                 </div>
             `;
-        } else {
-            // Show passed message
-            examStatusInfo.innerHTML = `
-                <div style="text-align: center;">
-                    <div style="font-size: 32px; margin-bottom: 10px;">✅</div>
-                    <h4 style="color: var(--success); margin-bottom: 10px;">Exam Passed</h4>
-                    <p>Score: <strong>${userApplication.exam.score}%</strong> (Passing: 75%)</p>
-                    <p>Date Taken: ${userApplication.exam.dateTaken ? new Date(userApplication.exam.dateTaken).toLocaleDateString() : '--'}</p>
-                    ${allDocumentsUploaded() ? 
-                        `<div style="background: #e8f5e9; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                            <h5 style="color: #2e7d32; margin-bottom: 10px;">🎉 Application Complete!</h5>
-                            <p>All requirements are now complete. Your application will be reviewed by admin.</p>
-                            <p style="font-size: 14px; color: #666; margin-top: 10px;">
-                                <strong>Note:</strong> Wait for admin's approval and interview schedule notification.
-                            </p>
-                        </div>` :
-                        `<p style="color: var(--medium-gray); font-size: 14px; margin-top: 10px;">
-                            Exam passed! Now complete your document submission.
-                        </p>`
-                    }
-                </div>
-            `;
         }
-        startExamBtn.textContent = 'Exam Already Taken';
-        startExamBtn.disabled = true;
-        startExamBtn.style.background = '#cccccc';
-    } else {
-        examStatusInfo.innerHTML = `
-            <div style="text-align: center;">
-                <div style="font-size: 32px; margin-bottom: 10px;">📝</div>
-                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">Ready to Take Exam</h4>
-                <p>You have 5 minutes to complete 16 questions.</p>
-                <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-top: 15px;">
-                    <h5 style="color: var(--primary-blue); margin-bottom: 10px;">⚠️ Important Notice:</h5>
-                    <ul style="margin: 0; padding-left: 20px; text-align: left;">
-                        <li>You can only take this exam <strong>once</strong></li>
-                        <li>If you fail, you cannot retake it</li>
-                        <li>Make sure you're ready before starting!</li>
-                    </ul>
-                </div>
-            </div>
-        `;
-        startExamBtn.textContent = 'Start Exam Now';
-        startExamBtn.disabled = false;
-        startExamBtn.style.background = 'linear-gradient(135deg, var(--success) 0%, #4caf50 100%)';
+        if (startExamBtn) {
+            startExamBtn.textContent = 'Start Exam Now';
+            startExamBtn.disabled = false;
+            startExamBtn.className = 'btn btn-primary btn-start-exam';
+        }
     }
 }
 
 function startExam() {
     if (userApplication.exam.taken) {
-        alert('You have already taken the exam.');
+        showAlertModal('error', 'Exam Already Taken', 'You have already taken the exam.');
         return;
     }
     
     if (!allDocumentsUploaded()) {
-        alert('Please upload all required documents first.');
+        showAlertModal('error', 'Documents Required', 'Please upload all required documents first.');
         showSection('documents');
         return;
     }
     
+    if (Object.keys(pendingDocuments).length > 0) {
+        checkDocumentsCompletion();
+        setTimeout(() => {
+            proceedToExam();
+        }, 1000);
+    } else {
+        proceedToExam();
+    }
+}
+
+function proceedToExam() {
     const username = sessionStorage.getItem('username');
     if (!username) {
-        alert('Please login again.');
-        logout();
+        showAlertModal('error', 'Session Expired', 'Please login again.');
+        setTimeout(() => {
+            logout();
+        }, 2000);
         return;
     }
     
-    // Save current state before redirecting
-    saveUserData();
+    // Ensure all UI updates are complete before redirecting
+    updateDashboard();
+    updateDocumentsSummary();
     
-    window.location.href = `exam.html?program=${userApplication.program}&applicationId=${userApplication.applicationId}&username=${encodeURIComponent(username)}`;
+    // Force a brief pause to ensure UI updates are rendered
+    setTimeout(() => {
+        saveUserData();
+        
+        window.location.href = `exam.html?program=${userApplication.program}&applicationId=${userApplication.applicationId}&username=${encodeURIComponent(username)}`;
+    }, 500);
 }
 
 // ===== STATUS SECTION =====
 function loadStatusSection() {
+    const statusSection = document.getElementById('statusSection');
+    if (!statusSection) return;
+    
     if (!userApplication) {
-        document.getElementById('statusSection').innerHTML = `
+        statusSection.innerHTML = `
             <div class="content-header">
-                <h1>Application Status</h1>
+                <h1>Application Progress</h1>
                 <p>Track your scholarship application progress</p>
             </div>
             <div style="text-align: center; padding: 60px 20px;">
@@ -1496,16 +1823,16 @@ function loadStatusSection() {
     updateExamResults();
     updateApplicationTimeline();
     showAdminNoteIfComplete();
+    checkForApproval();
 }
 
 function showAdminNoteIfComplete() {
-    // First, check if admin note container already exists and remove it
     const existingNote = document.getElementById('adminNoteContainer');
     if (existingNote) {
         existingNote.remove();
     }
     
-    if (userApplication.status === 'pending' || userApplication.status === 'under-review' || userApplication.status === 'accepted' || userApplication.status === 'rejected') {
+    if (userApplication.status === 'pending' || userApplication.status === 'under-review' || userApplication.status === 'accepted' || userApplication.status === 'rejected' || userApplication.status === 'approved') {
         const adminNoteContainer = document.createElement('div');
         adminNoteContainer.id = 'adminNoteContainer';
         adminNoteContainer.style.cssText = 'margin: 30px 0;';
@@ -1518,7 +1845,7 @@ function showAdminNoteIfComplete() {
                         <h3>Application Complete - Awaiting Admin Review</h3>
                     </div>
                     <div class="admin-note-content">
-                        <p><strong>Status:</strong> Your application is now complete and submitted for review.</p>
+                        <p><strong>Progress:</strong> Your application is now complete and submitted for review.</p>
                         <p><strong>Next Steps:</strong></p>
                         <ul>
                             <li>✅ All documents submitted</li>
@@ -1540,7 +1867,7 @@ function showAdminNoteIfComplete() {
                         <h3>Application Under Review</h3>
                     </div>
                     <div class="admin-note-content">
-                        <p><strong>Status:</strong> Admin is currently reviewing your documents.</p>
+                        <p><strong>Progress:</strong> Admin is currently reviewing your documents.</p>
                         <p><strong>Process:</strong></p>
                         <ul>
                             <li>✅ Application received</li>
@@ -1555,21 +1882,21 @@ function showAdminNoteIfComplete() {
                     </div>
                 </div>
             `;
-        } else if (userApplication.status === 'accepted') {
+        } else if (userApplication.status === 'accepted' || userApplication.status === 'approved') {
             adminNoteContainer.innerHTML = `
                 <div class="admin-note" style="background: #e8f5e9; border-left: 4px solid #4caf50;">
                     <div class="admin-note-header">
                         <span style="font-size: 20px;">✅</span>
-                        <h3>Application Accepted!</h3>
+                        <h3>Application Approved!</h3>
                     </div>
                     <div class="admin-note-content">
-                        <p><strong>Status:</strong> Congratulations! Your application has been accepted.</p>
+                        <p><strong>Progress:</strong> Congratulations! Your application has been approved.</p>
                         <p><strong>Next Steps:</strong></p>
                         <ul>
                             <li>✅ Application approved</li>
                             <li>✅ Documents verified</li>
                             <li>✅ Exam passed</li>
-                            <li>📅 Interview schedule: ${userApplication.adminReview.interviewDate || 'Will be sent via SMS'}</li>
+                            <li>📅 Interview schedule: ${userApplication.adminReview.interviewDate ? new Date(userApplication.adminReview.interviewDate).toLocaleDateString() : 'Will be sent via SMS'}</li>
                             <li>📍 Location: ${userApplication.adminReview.interviewLocation || 'To be announced'}</li>
                         </ul>
                         <div class="note-important">
@@ -1586,7 +1913,7 @@ function showAdminNoteIfComplete() {
                         <h3>Application Rejected</h3>
                     </div>
                     <div class="admin-note-content">
-                        <p><strong>Status:</strong> Your application has been rejected.</p>
+                        <p><strong>Progress:</strong> Your application has been rejected.</p>
                         ${userApplication.exam.taken && !userApplication.exam.passed ? 
                             `<p><strong>Reason:</strong> Failed qualification exam (Score: ${userApplication.exam.score}%)</p>` :
                             `<p><strong>Review Date:</strong> ${userApplication.adminReview.reviewDate ? new Date(userApplication.adminReview.reviewDate).toLocaleDateString() : 'N/A'}</p>
@@ -1619,8 +1946,8 @@ function updateApplicationInfo() {
     const dateApplied = document.getElementById('statusDateApplied');
     const lastUpdated = document.getElementById('statusLastUpdated');
 
-    appId.textContent = userApplication.applicationId || '--';
-    program.textContent = userApplication.program ? getProgramName(userApplication.program) : '--';
+    if (appId) appId.textContent = userApplication.applicationId || '--';
+    if (program) program.textContent = userApplication.program ? getProgramName(userApplication.program) : '--';
 
     let badgeClass = 'badge-pending';
     let statusText = 'Not Started';
@@ -1651,6 +1978,7 @@ function updateApplicationInfo() {
             statusText = 'Under Review';
             break;
         case 'accepted':
+        case 'approved':
             badgeClass = 'badge-approved';
             statusText = 'Accepted - Interview Scheduled';
             break;
@@ -1660,39 +1988,46 @@ function updateApplicationInfo() {
             break;
     }
 
-    statusBadge.className = `status-badge ${badgeClass}`;
-    statusBadge.textContent = statusText;
-
-    if (userApplication.submittedDate) {
-        const date = new Date(userApplication.submittedDate);
-        dateApplied.textContent = date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } else {
-        dateApplied.textContent = '--';
+    if (statusBadge) {
+        statusBadge.className = `status-badge ${badgeClass}`;
+        statusBadge.textContent = statusText;
     }
 
-    if (userApplication.timeline && userApplication.timeline.length > 0) {
-        const lastEvent = userApplication.timeline[userApplication.timeline.length - 1];
-        const lastEventDate = new Date(lastEvent.date);
-        lastUpdated.textContent = lastEventDate.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } else {
-        lastUpdated.textContent = '--';
+    if (dateApplied) {
+        if (userApplication.submittedDate) {
+            const date = new Date(userApplication.submittedDate);
+            dateApplied.textContent = date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else {
+            dateApplied.textContent = '--';
+        }
+    }
+
+    if (lastUpdated) {
+        if (userApplication.timeline && userApplication.timeline.length > 0) {
+            const lastEvent = userApplication.timeline[userApplication.timeline.length - 1];
+            const lastEventDate = new Date(lastEvent.date);
+            lastUpdated.textContent = lastEventDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } else {
+            lastUpdated.textContent = '--';
+        }
     }
 }
 
 function updateDocumentsStatus() {
     const documentsList = document.getElementById('statusDocumentsList');
+    if (!documentsList) return;
     
     if (!userApplication.documents) {
         documentsList.innerHTML = '<p>No documents information available.</p>';
@@ -1711,9 +2046,10 @@ function updateDocumentsStatus() {
 
     documents.forEach(doc => {
         const docData = userApplication.documents[doc.id];
-        const isUploaded = docData && docData.uploaded;
-        const isVerified = docData && docData.verified;
-        const isRejected = docData && docData.rejected;
+        const isUploaded = docData && docData.uploaded === true;
+        const isVerified = docData && docData.verified === true;
+        const isRejected = docData && docData.rejected === true;
+        const isApproved = userApplication.status === 'approved';
         
         let statusText = 'Not Uploaded';
         let statusClass = 'status-required';
@@ -1722,7 +2058,7 @@ function updateDocumentsStatus() {
             if (isRejected) {
                 statusText = 'Rejected ❌';
                 statusClass = 'status-required';
-            } else if (isVerified) {
+            } else if (isVerified || isApproved) {
                 statusText = 'Verified ✓';
                 statusClass = 'status-verified';
             } else {
@@ -1743,14 +2079,19 @@ function updateDocumentsStatus() {
         `;
     });
 
-    const uploadedDocs = Object.values(userApplication.documents).filter(d => d.uploaded).length;
-    const rejectedDocs = Object.values(userApplication.documents).filter(d => d.rejected).length;
+    let uploadedDocs = 0;
+    Object.values(userApplication.documents).forEach(doc => {
+        if (doc.uploaded === true) {
+            uploadedDocs++;
+        }
+    });
+    const rejectedDocs = Object.values(userApplication.documents).filter(d => d.rejected === true).length;
     const totalDocs = Object.keys(userApplication.documents).length;
     const progress = Math.round((uploadedDocs / totalDocs) * 100);
     
     html += `
         <div class="detail-row" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid var(--light-blue);">
-            <div class="detail-label">Progress:</div>
+            <div class="detail-label">Documents:</div>
             <div class="detail-value">
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <div style="flex: 1; background: var(--light-blue); height: 10px; border-radius: 5px; overflow: hidden;">
@@ -1782,34 +2123,39 @@ function updateExamResults() {
     const examDate = document.getElementById('examDate');
 
     if (userApplication.exam.taken) {
-        examResultStatus.textContent = 'Completed';
-        examScore.textContent = `${userApplication.exam.score}%`;
-        examResult.textContent = userApplication.exam.passed ? 'Passed ✓' : 'Failed';
-        examResult.style.color = userApplication.exam.passed ? 'var(--success)' : 'var(--danger)';
-        examResult.style.fontWeight = '600';
+        if (examResultStatus) examResultStatus.textContent = 'Completed';
+        if (examScore) examScore.textContent = `${userApplication.exam.score}%`;
+        if (examResult) {
+            examResult.textContent = userApplication.exam.passed ? 'Passed ✓' : 'Failed';
+            examResult.style.color = userApplication.exam.passed ? 'var(--success)' : 'var(--danger)';
+            examResult.style.fontWeight = '600';
+        }
         
-        if (userApplication.exam.dateTaken) {
-            const date = new Date(userApplication.exam.dateTaken);
-            examDate.textContent = date.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } else {
-            examDate.textContent = '--';
+        if (examDate) {
+            if (userApplication.exam.dateTaken) {
+                const date = new Date(userApplication.exam.dateTaken);
+                examDate.textContent = date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } else {
+                examDate.textContent = '--';
+            }
         }
     } else {
-        examResultStatus.textContent = 'Not Taken';
-        examScore.textContent = '--';
-        examResult.textContent = '--';
-        examDate.textContent = '--';
+        if (examResultStatus) examResultStatus.textContent = 'Not Taken';
+        if (examScore) examScore.textContent = '--';
+        if (examResult) examResult.textContent = '--';
+        if (examDate) examDate.textContent = '--';
     }
 }
 
 function updateApplicationTimeline() {
     const timeline = document.getElementById('applicationTimeline');
+    if (!timeline) return;
     
     if (!userApplication.timeline || userApplication.timeline.length === 0) {
         timeline.innerHTML = `
@@ -1851,7 +2197,7 @@ function updateApplicationTimeline() {
                 </div>
                 <div class="timeline-content">
                     <h4>${event.event}</h4>
-                    <p>Application status updated</p>
+                    <p>Application progress updated</p>
                 </div>
             </div>
         `;
@@ -1860,47 +2206,125 @@ function updateApplicationTimeline() {
     timeline.innerHTML = html;
 }
 
+// ===== APPROVAL CONGRATULATIONS SYSTEM =====
+function checkForApproval() {
+    if (userApplication && userApplication.status === 'approved') {
+        showApprovalCongratulations();
+        disableDocumentUploads();
+    } else {
+        hideApprovalCongratulations();
+    }
+}
+
+function showApprovalCongratulations() {
+    let banner = document.getElementById('approvalCongratulationsBanner');
+    
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'approvalCongratulationsBanner';
+        banner.className = 'approval-congratulations-banner';
+        
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.insertBefore(banner, mainContent.firstChild);
+        }
+    }
+    
+    const interviewDate = userApplication.adminReview?.interviewDate ? 
+        new Date(userApplication.adminReview.interviewDate).toLocaleDateString() : 
+        'Will be sent via SMS';
+    
+    banner.innerHTML = `
+        <h3>🎉 Congratulations! Your Application Has Been Approved</h3>
+        <p>Your scholarship application for <strong>${getProgramName(userApplication.program)}</strong> has been approved by the administrator.</p>
+        <ul>
+            <li>✅ Your documents have been verified</li>
+            <li>✅ Your exam score met the requirements</li>
+            <li>📅 Interview schedule: ${interviewDate}</li>
+            <li>📍 Location: ${userApplication.adminReview?.interviewLocation || 'To be announced'}</li>
+        </ul>
+        <p style="margin-top: 15px; font-size: 14px;">
+            <strong>Next Steps:</strong> Please wait for further instructions via SMS regarding your enrollment process.
+        </p>
+    `;
+    
+    banner.style.display = 'block';
+}
+
+function hideApprovalCongratulations() {
+    const banner = document.getElementById('approvalCongratulationsBanner');
+    if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
+function disableDocumentUploads() {
+    const submitBtn = document.getElementById('submitDocumentsBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '✅ Application Approved - Documents Locked';
+        submitBtn.disabled = true;
+        submitBtn.className = 'btn btn-primary btn-disabled';
+    }
+}
+
 // ===== PROFILE SECTION =====
 function loadProfileSection() {
     if (!currentUser || !currentUser.personal || !currentUser.account) {
-        alert('Error loading profile data. Please try logging out and back in.');
+        showAlertModal('error', 'Profile Error', 'Error loading profile data. Please try logging out and back in.');
         return;
     }
     
-    document.getElementById('profileFullName').textContent = 
-        `${currentUser.personal.firstName || ''} ${currentUser.personal.lastName || ''}`.trim();
-    document.getElementById('profileEmail').textContent = currentUser.personal.email || 'No email set';
-    document.getElementById('profileUsername').textContent = currentUser.account.username || 'No username';
+    const profileFullName = document.getElementById('profileFullName');
+    const profileEmail = document.getElementById('profileEmail');
+    const profileUsername = document.getElementById('profileUsername');
+    const profileCreatedDate = document.getElementById('profileCreatedDate');
     
-    if (currentUser.registrationDate) {
-        const regDate = new Date(currentUser.registrationDate);
-        document.getElementById('profileCreatedDate').textContent = 
-            regDate.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-    } else {
-        document.getElementById('profileCreatedDate').textContent = 
-            new Date().toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+    if (profileFullName) profileFullName.textContent = 
+        `${currentUser.personal.firstName || ''} ${currentUser.personal.lastName || ''}`.trim();
+    if (profileEmail) profileEmail.textContent = currentUser.personal.email || 'No email set';
+    if (profileUsername) profileUsername.textContent = currentUser.account.username || 'No username';
+    
+    if (profileCreatedDate) {
+        if (currentUser.registrationDate) {
+            const regDate = new Date(currentUser.registrationDate);
+            profileCreatedDate.textContent = 
+                regDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+        } else {
+            profileCreatedDate.textContent = 
+                new Date().toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+        }
     }
     
-    document.getElementById('currentPassword').value = '';
-    document.getElementById('newPassword').value = '';
-    document.getElementById('confirmPassword').value = '';
+    const currentPassword = document.getElementById('currentPassword');
+    const newPassword = document.getElementById('newPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
     
-    document.getElementById('currentPasswordError').style.display = 'none';
-    document.getElementById('newPasswordError').style.display = 'none';
-    document.getElementById('confirmPasswordError').style.display = 'none';
-    document.getElementById('passwordSuccess').style.display = 'none';
+    if (currentPassword) currentPassword.value = '';
+    if (newPassword) newPassword.value = '';
+    if (confirmPassword) confirmPassword.value = '';
     
-    document.getElementById('passwordStrength').className = 'strength-bar';
+    const currentPasswordError = document.getElementById('currentPasswordError');
+    const newPasswordError = document.getElementById('newPasswordError');
+    const confirmPasswordError = document.getElementById('confirmPasswordError');
+    const passwordSuccess = document.getElementById('passwordSuccess');
+    
+    if (currentPasswordError) currentPasswordError.style.display = 'none';
+    if (newPasswordError) newPasswordError.style.display = 'none';
+    if (confirmPasswordError) confirmPasswordError.style.display = 'none';
+    if (passwordSuccess) passwordSuccess.style.display = 'none';
+    
+    const passwordStrength = document.getElementById('passwordStrength');
+    if (passwordStrength) passwordStrength.className = 'strength-bar';
     
     setupPasswordValidation();
 }
@@ -1952,28 +2376,30 @@ function checkPasswordStrength(password) {
 }
 
 function validatePasswordMatch() {
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const newPassword = document.getElementById('newPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
     const errorEl = document.getElementById('confirmPasswordError');
     const successEl = document.getElementById('passwordSuccess');
     
-    if (!errorEl || !successEl) return;
+    if (!errorEl || !successEl || !newPassword || !confirmPassword) return;
     
     errorEl.style.display = 'none';
     successEl.style.display = 'none';
     
-    if (confirmPassword && newPassword !== confirmPassword) {
+    if (confirmPassword.value && newPassword.value !== confirmPassword.value) {
         errorEl.textContent = 'Passwords do not match';
         errorEl.style.display = 'block';
-    } else if (confirmPassword && newPassword === confirmPassword && newPassword.length >= 8) {
+    } else if (confirmPassword.value && newPassword.value === confirmPassword.value && newPassword.value.length >= 8) {
         successEl.style.display = 'block';
     }
 }
 
 function updatePassword() {
-    const currentPassword = document.getElementById('currentPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const currentPassword = document.getElementById('currentPassword');
+    const newPassword = document.getElementById('newPassword');
+    const confirmPassword = document.getElementById('confirmPassword');
+    
+    if (!currentPassword || !newPassword || !confirmPassword) return;
     
     const currentPasswordError = document.getElementById('currentPasswordError');
     const newPasswordError = document.getElementById('newPasswordError');
@@ -1985,13 +2411,13 @@ function updatePassword() {
     
     let isValid = true;
     
-    if (!currentPassword) {
+    if (!currentPassword.value) {
         if (currentPasswordError) {
             currentPasswordError.textContent = 'Current password is required';
             currentPasswordError.style.display = 'block';
         }
         isValid = false;
-    } else if (currentPassword !== currentUser.account.password) {
+    } else if (currentPassword.value !== currentUser.account.password) {
         if (currentPasswordError) {
             currentPasswordError.textContent = 'Current password is incorrect';
             currentPasswordError.style.display = 'block';
@@ -1999,19 +2425,19 @@ function updatePassword() {
         isValid = false;
     }
     
-    if (!newPassword) {
+    if (!newPassword.value) {
         if (newPasswordError) {
             newPasswordError.textContent = 'New password is required';
             newPasswordError.style.display = 'block';
         }
         isValid = false;
-    } else if (newPassword.length < 8) {
+    } else if (newPassword.value.length < 8) {
         if (newPasswordError) {
             newPasswordError.textContent = 'Password must be at least 8 characters';
             newPasswordError.style.display = 'block';
         }
         isValid = false;
-    } else if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+    } else if (!/[A-Z]/.test(newPassword.value) || !/[a-z]/.test(newPassword.value) || !/[0-9]/.test(newPassword.value)) {
         if (newPasswordError) {
             newPasswordError.textContent = 'Password must contain uppercase, lowercase, and number';
             newPasswordError.style.display = 'block';
@@ -2019,7 +2445,7 @@ function updatePassword() {
         isValid = false;
     }
     
-    if (newPassword !== confirmPassword) {
+    if (newPassword.value !== confirmPassword.value) {
         if (confirmPasswordError) {
             confirmPasswordError.textContent = 'Passwords do not match';
             confirmPasswordError.style.display = 'block';
@@ -2027,7 +2453,7 @@ function updatePassword() {
         isValid = false;
     }
     
-    if (newPassword === currentPassword) {
+    if (newPassword.value === currentPassword.value) {
         if (newPasswordError) {
             newPasswordError.textContent = 'New password must be different from current password';
             newPasswordError.style.display = 'block';
@@ -2042,20 +2468,20 @@ function updatePassword() {
         localStorage.removeItem('rememberedUser');
     }
     
-    currentUser.account.password = newPassword;
+    currentUser.account.password = newPassword.value;
     
     if (userApplication && userApplication.timeline) {
         addTimelineEvent('Password updated');
     }
     
     if (saveUserData()) {
-        alert('Password updated successfully! You will be logged out to apply the changes.');
+        showAlertModal('success', 'Password Updated', 'Password updated successfully! You will be logged out to apply the changes.');
         
         setTimeout(() => {
             logout();
-        }, 1000);
+        }, 2000);
     } else {
-        alert('Error updating password. Please try again.');
+        showAlertModal('error', 'Update Failed', 'Error updating password. Please try again.');
     }
 }
 
@@ -2094,44 +2520,49 @@ function saveUserData() {
         const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
         const userIndex = users.findIndex(u => u.account?.username === currentUser.account.username);
         
-        if (userIndex !== -1) {
-            const existingUser = users[userIndex];
-            if (existingUser.applications && existingUser.applications.length > 0) {
-                const existingApp = existingUser.applications.find(app => 
-                    app.applicationId === userApplication.applicationId
-                );
-                if (existingApp && existingApp.exam) {
-                    if (!userApplication.exam.taken && existingApp.exam.taken) {
-                        userApplication.exam = existingApp.exam;
-                    }
-                }
-                
-                if (existingApp && existingApp.documents) {
-                    for (const docKey in existingApp.documents) {
-                        if (existingApp.documents[docKey] && existingApp.documents[docKey].uploaded) {
-                            if (!userApplication.documents[docKey] || !userApplication.documents[docKey].uploaded) {
-                                userApplication.documents[docKey] = existingApp.documents[docKey];
-                            }
-                        }
-                    }
-                }
-            }
-            
-            users[userIndex] = currentUser;
-            localStorage.setItem('registeredUsers', JSON.stringify(users));
-            
-            const documentData = {
-                userId: currentUser.account.username,
-                applicationId: userApplication.applicationId,
-                documents: userApplication.documents,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            const docStorageKey = `documents_${currentUser.account.username}_${userApplication.applicationId}`;
-            localStorage.setItem(docStorageKey, JSON.stringify(documentData));
+        if (userIndex === -1) {
+            console.error('User not found in registeredUsers');
+            return false;
         }
         
+        if (!currentUser.applications) {
+            currentUser.applications = [];
+        }
+        
+        const appIndex = currentUser.applications.findIndex(app => 
+            app.applicationId === userApplication.applicationId
+        );
+        
+        if (appIndex === -1) {
+            currentUser.applications.push(userApplication);
+        } else {
+            currentUser.applications[appIndex] = userApplication;
+        }
+        
+        users[userIndex] = currentUser;
+        
+        localStorage.setItem('registeredUsers', JSON.stringify(users));
+        
+        // Only store current application in sessionStorage for immediate access
         sessionStorage.setItem('currentApplication', JSON.stringify(userApplication));
+        
+        console.log('Data saved successfully to localStorage:', {
+            userId: currentUser.account.username,
+            applicationId: userApplication.applicationId,
+            documentsCount: Object.values(userApplication.documents).filter(d => d.uploaded === true).length,
+            totalUsers: users.length,
+            documents: userApplication.documents
+        });
+        
+        const savedUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+        const savedUser = savedUsers.find(u => u.account?.username === currentUser.account.username);
+        
+        if (savedUser && savedUser.applications) {
+            const savedApp = savedUser.applications.find(app => app.applicationId === userApplication.applicationId);
+            if (savedApp && savedApp.documents) {
+                console.log('Verification - Saved documents:', Object.values(savedApp.documents).filter(d => d.uploaded === true).length);
+            }
+        }
         
         return true;
     } catch (error) {
@@ -2161,26 +2592,61 @@ function setupEventListeners() {
                     passingScore: 75
                 };
                 
-                // AUTOMATIC REJECTION FOR FAILED EXAM
                 if (!result.passed) {
                     userApplication.status = 'rejected';
                     userApplication.adminReview = {
                         reviewDate: new Date().toISOString(),
                         reviewer: 'System',
-                        notes: 'Application automatically rejected due to failed qualification exam.',
                         decision: 'rejected',
+                        notes: 'Automatically rejected due to failed qualification exam.',
                         deletionDate: null
                     };
                     
-                    // Mark all documents as rejected
+                    // MOVE DOCUMENTS TO REJECTION STORAGE USING ADMIN FORMAT
+                    const documentRejectionReasons = JSON.parse(localStorage.getItem('documentRejectionReasons') || '{}');
+                    const timestamp = new Date().toISOString();
+                    
                     Object.keys(userApplication.documents).forEach(docKey => {
-                        if (userApplication.documents[docKey].uploaded) {
-                            userApplication.documents[docKey].rejected = true;
-                            userApplication.documents[docKey].adminNote = 'Document rejected due to failed exam';
+                        const doc = userApplication.documents[docKey];
+                        if (doc.uploaded === true) {
+                            const rejectionKey = `${userApplication.applicationId}_${docKey}`;
+                            
+                            // Add to rejection storage using admin format
+                            documentRejectionReasons[rejectionKey] = {
+                                applicationId: userApplication.applicationId,
+                                documentId: docKey,
+                                reason: 'Failed qualification exam',
+                                rejectedBy: 'System',
+                                rejectionDate: timestamp,
+                                documentType: doc.type || docKey,
+                                studentName: `${currentUser.personal.firstName} ${currentUser.personal.lastName}`,
+                                studentEmail: currentUser.personal.email,
+                                originalData: {
+                                    filename: doc.filename,
+                                    filetype: doc.filetype,
+                                    size: doc.size,
+                                    dataUrl: doc.dataUrl,
+                                    uploadDate: doc.lastModified ? new Date(doc.lastModified).toISOString() : timestamp,
+                                    examScore: userApplication.exam.score,
+                                    examDate: userApplication.exam.dateTaken,
+                                    program: userApplication.program
+                                }
+                            };
+                            
+                            // CLEAR THE DOCUMENT FROM USER STORAGE
+                            doc.uploaded = false;
+                            doc.filename = null;
+                            doc.filetype = null;
+                            doc.size = null;
+                            doc.dataUrl = null;
+                            doc.verified = false;
+                            doc.rejected = false;
+                            doc.adminNote = '';
                         }
                     });
                     
-                    // Mark account for deletion
+                    localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+                    
                     const deletionDate = new Date();
                     deletionDate.setDate(deletionDate.getDate() + 7);
                     
@@ -2192,11 +2658,12 @@ function setupEventListeners() {
                     };
                     
                     addTimelineEvent(`Exam failed - Score: ${result.score}%`);
-                    addTimelineEvent('Application automatically rejected');
+                    addTimelineEvent('Documents moved to rejection storage');
                     addTimelineEvent('Account marked for deletion in 7 days');
                     
                     setTimeout(() => {
-                        alert(`Sorry for failing, no another chances for taking. Better luck next school year!\n\nYour account will be deleted in 7 days.`);
+                        showAlertModal('error', 'Exam Failed', 
+                            `Sorry for failing, no another chances for taking. Better luck next school year!\n\nYour account will be deleted in 7 days.`);
                     }, 500);
                 } else if (result.passed && allDocumentsUploaded()) {
                     userApplication.status = 'pending';
@@ -2204,7 +2671,8 @@ function setupEventListeners() {
                     addTimelineEvent('All requirements met - Application submitted for review');
                     
                     setTimeout(() => {
-                        alert('Congratulations! You passed the exam and all documents are submitted.\n\nYour application is now complete and pending review.\n\nPlease wait for admin\'s approval and interview schedule notification.');
+                        showAlertModal('success', 'Exam Passed!', 
+                            'Congratulations! You passed the exam and all documents are submitted.\n\nYour application is now complete and pending review.\n\nPlease wait for admin\'s approval and interview schedule notification.');
                     }, 500);
                 } else if (result.passed) {
                     userApplication.status = 'exam-completed';
@@ -2212,7 +2680,8 @@ function setupEventListeners() {
                     addTimelineEvent('Exam complete - Please submit remaining documents');
                     
                     setTimeout(() => {
-                        alert('Congratulations! You passed the exam.\n\nPlease submit all required documents to complete your application.');
+                        showAlertModal('success', 'Exam Passed!', 
+                            'Congratulations! You passed the exam.\n\nPlease submit all required documents to complete your application.');
                     }, 500);
                 }
                 
@@ -2240,16 +2709,13 @@ function checkForAdminUpdates() {
         if (userApplication.adminReview.decision === 'rejected') {
             userApplication.status = 'rejected';
             
-            // Only show rejected warning if it wasn't due to exam failure
             if (userApplication.exam.taken && !userApplication.exam.passed) {
                 // This is exam failure, handled elsewhere
             } else {
-                // Set deletion date for admin-rejected applications
                 const deletionDate = new Date();
                 deletionDate.setDate(deletionDate.getDate() + 7);
                 userApplication.adminReview.deletionDate = deletionDate.toISOString();
                 
-                // Mark account for deletion
                 currentUser.failedExam = {
                     markedForDeletion: true,
                     deletionDate: deletionDate.toISOString(),
@@ -2261,10 +2727,11 @@ function checkForAdminUpdates() {
                 addTimelineEvent('Application rejected by admin');
                 addTimelineEvent('Account marked for deletion in 7 days');
             }
-        } else if (userApplication.adminReview.decision === 'accepted') {
-            userApplication.status = 'accepted';
+        } else if (userApplication.adminReview.decision === 'accepted' || userApplication.adminReview.decision === 'approved') {
+            userApplication.status = 'approved';
             addTimelineEvent('Application accepted by admin');
             addTimelineEvent('Interview scheduled - Check SMS for details');
+            checkForApproval();
         }
         
         saveUserData();
@@ -2277,8 +2744,5 @@ function checkForAdminUpdates() {
 }
 
 function checkFailedAccountStatus() {
-    // This function checks if the user has failed exam or rejected application
-    // but we're removing the warning banners to prevent duplication
-    // We'll just handle the countdown display for deletion
     updateCountdownDisplay();
 }

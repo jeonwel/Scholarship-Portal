@@ -104,8 +104,6 @@
                         <div class="stat-label">Rejected</div>
                     </div>
                 </div>
-
-                <!-- REMOVED: Recent Applications Section -->
             </div>
 
             <!-- Manage Applicants -->
@@ -121,7 +119,7 @@
                     </div>
                 </div>
 
-                <!-- Simplified Filters - UPDATED: Removed redundant search -->
+                <!-- Simplified Filters -->
                 <div class="filter-container">
                     <div class="filter-row">
                         <div style="display: flex; gap: 10px; flex-wrap: wrap; width: 100%; justify-content: center;">
@@ -195,14 +193,14 @@
                 </div>
             </div>
 
-            <!-- Exam Results - UPDATED -->
+            <!-- Exam Results -->
             <div id="examSection" class="content-section" style="display: none;">
                 <div class="content-header">
                     <h1>Exam Results</h1>
                     <p>View and evaluate applicant exam scores</p>
                 </div>
 
-                <!-- Exam Results Table - REMOVED Time Spent column -->
+                <!-- Exam Results Table -->
                 <div class="table-container">
                     <table id="examResultsTable">
                         <thead>
@@ -254,7 +252,7 @@
                 </div>
             </div>
 
-            <!-- Reports & Analytics - UPDATED -->
+            <!-- Reports & Analytics -->
             <div id="reportsSection" class="content-section" style="display: none;">
                 <!-- Reports content will be loaded dynamically -->
             </div>
@@ -291,38 +289,31 @@
         </div>
     </div>
 
-    <!-- Interview Status Modal -->
+    <!-- Interview Schedule Modal - UPDATED: Removed interview status dropdown -->
     <div class="modal-overlay" id="interviewModal">
         <div class="modal">
             <div class="modal-header">
-                <h3>Update Interview Status</h3>
+                <h3>Schedule Interview</h3>
                 <button class="modal-close" onclick="closeModal()">×</button>
             </div>
             <div class="modal-body">
                 <div id="interviewDetails">
                     <div class="filter-group">
-                        <label>Interview Status</label>
-                        <select class="filter-control" id="interviewStatusSelect">
-                            <option value="not-scheduled">Not Scheduled</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="completed">Completed</option>
-                            <option value="passed">Passed</option>
-                            <option value="failed">Failed</option>
-                        </select>
+                        <label>Interview Date & Time</label>
+                        <input type="datetime-local" class="filter-control" id="interviewDate" required>
                     </div>
                     <div class="filter-group">
-                        <label>Interview Date</label>
-                        <input type="datetime-local" class="filter-control" id="interviewDate">
-                    </div>
-                    <div class="filter-group">
-                        <label>Notes</label>
-                        <textarea class="filter-control" id="interviewNotes" rows="3" placeholder="Add interview notes..."></textarea>
+                        <label>Interview Location/Details</label>
+                        <textarea class="filter-control" id="interviewNotes" rows="3" placeholder="Enter interview location or details..."></textarea>
                     </div>
                     <div style="text-align: center; margin-top: 20px;">
-                        <button class="btn-filter" onclick="saveInterviewStatus()" style="background: var(--success);">
-                            Save Changes
+                        <button class="btn-filter" onclick="saveInterviewSchedule()" style="background: var(--success);">
+                            Schedule Interview
                         </button>
-                        <button class="btn-filter" onclick="closeModal()">
+                        <button class="btn-filter" onclick="removeInterviewSchedule()" style="background: var(--danger); margin-left: 10px;">
+                            Remove Schedule
+                        </button>
+                        <button class="btn-filter" onclick="closeModal()" style="margin-left: 10px;">
                             Cancel
                         </button>
                     </div>
@@ -377,6 +368,58 @@
             </div>
         </div>
     </div>
+
+    <!-- Alert Modal -->
+<div class="modal-overlay alert-modal" id="alertModal" style="display: none;">
+    <div class="modal">
+        <div class="modal-body">
+            <div class="alert-modal-content">
+                <div class="alert-icon" id="alertIcon"></div>
+                <h3 class="alert-title" id="alertTitle"></h3>
+                <p class="alert-message" id="alertMessage"></p>
+                <div class="alert-buttons">
+                    <button class="btn-alert btn-alert-primary" id="alertOkBtn">OK</button>
+                    <button class="btn-alert btn-alert-secondary" id="alertCancelBtn" style="display: none;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay confirm-modal" id="confirmModal" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="confirmTitle"></h3>
+            <button class="modal-close" onclick="closeConfirmModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="confirmMessage"></p>
+            <div class="confirm-buttons">
+                <button class="btn-confirm btn-confirm-yes" id="confirmYesBtn">Yes</button>
+                <button class="btn-confirm btn-confirm-no" id="confirmNoBtn">No</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Reason Modal -->
+<div class="modal-overlay rejection-modal" id="rejectionModal" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="rejectionTitle"></h3>
+            <button class="modal-close" onclick="closeRejectionModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="rejectionInstruction"></p>
+            <textarea class="rejection-textarea" id="rejectionReason" placeholder="Enter rejection reason here..."></textarea>
+            <div class="alert-buttons" style="margin-top: 20px;">
+                <button class="btn-alert btn-alert-primary" id="rejectionSubmitBtn">Submit</button>
+                <button class="btn-alert btn-alert-secondary" onclick="closeRejectionModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
 
     <!-- Report Modal (Dynamically created) -->
     <script src="../js/admin-dashboard.js"></script>

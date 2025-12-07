@@ -21,15 +21,19 @@
         </div>
         
         <!-- Application Rejected Warning -->
-<div id="rejectedAppWarning" class="warning-banner app-rejected-warning">
-    <div class="warning-content">
-        <div class="warning-icon">❌</div>
-        <div class="warning-text">
-            <div class="warning-title">APPLICATION REJECTED - ACCOUNT DELETION IN <span id="rejectedCountdownDays" class="countdown-timer">7</span> DAYS</div>
-            <div class="warning-description">Your application has been rejected by the administrator.</div>
+        <div id="rejectedAppWarning" class="warning-banner app-rejected-warning">
+            <div class="warning-content">
+                <div class="warning-icon">❌</div>
+                <div class="warning-text">
+                    <div class="warning-title">APPLICATION REJECTED - ACCOUNT DELETION IN <span id="rejectedCountdownDays" class="countdown-timer">7</span> DAYS</div>
+                    <div class="warning-description">Your application has been rejected by the administrator.</div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
+
+    <!-- Approval Congratulations Banner -->
+    <div id="approvalCongratulationsBanner" class="approval-congratulations-banner" style="display: none;"></div>
 
     <!-- Dashboard Header -->
     <header class="dashboard-header">
@@ -84,7 +88,7 @@
                 </li>
                 <li>
                     <a href="#" onclick="showSection('status')" id="statusLink">
-                        <span>📊</span> Application Status
+                        <span>📊</span> Application
                         <span class="notification-badge" id="statusNotification" style="display: none;">!</span>
                     </a>
                 </li>
@@ -112,7 +116,7 @@
 
                 <!-- Application Progress -->
                 <div class="progress-container">
-                    <h3>Application Progress</h3>
+                    <h3>Application Steps</h3>
                     <div class="progress-steps" id="progressSteps">
                         <div class="step" id="step1">
                             <div class="step-number">1</div>
@@ -136,12 +140,8 @@
 
                 <!-- Status Cards -->
                 <div class="status-grid">
-                    <div class="status-card">
-                        <h3><span>📝</span> Application Status</h3>
-                        <div class="status-value status-not-started" id="applicationStatusText">Not Started</div>
-                        <div class="status-description" id="applicationStatusDesc">You haven't started your application</div>
-                    </div>
-
+                    <!-- Removed Application Status card -->
+                    
                     <div class="status-card">
                         <h3><span>📄</span> Documents</h3>
                         <div class="status-value status-not-started" id="documentsStatusText">0/6</div>
@@ -283,11 +283,11 @@
                 </div>
             </div>
 
-            <!-- Application Status -->
+            <!-- Application -->
             <div id="statusSection" class="content-section" style="display: none;">
                 <div class="content-header">
-                    <h1>Application Status</h1>
-                    <p>Track your scholarship application progress</p>
+                    <h1>Application</h1>
+                    <p>Track your scholarship application</p>
                 </div>
 
                 <div class="application-details">
@@ -300,12 +300,6 @@
                         <div class="detail-row">
                             <div class="detail-label">Program:</div>
                             <div class="detail-value" id="statusProgram">--</div>
-                        </div>
-                        <div class="detail-row">
-                            <div class="detail-label">Status:</div>
-                            <div class="detail-value">
-                                <span class="status-badge badge-pending" id="statusBadge">Not Started</span>
-                            </div>
                         </div>
                         <div class="detail-row">
                             <div class="detail-label">Date Applied:</div>
@@ -447,6 +441,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Alert Modal System -->
+    <div class="alert-modal-overlay" id="alertModal">
+        <div class="alert-modal">
+            <div class="alert-modal-header">
+                <div class="alert-modal-icon" id="alertModalIcon">⚠️</div>
+                <h3 class="alert-modal-title" id="alertModalTitle">Alert</h3>
+            </div>
+            <div class="alert-modal-body">
+                <p id="alertModalMessage">Message goes here</p>
+                <div id="alertModalDetails"></div>
+            </div>
+            <div class="alert-modal-footer">
+                <button class="btn-modal-ok" onclick="closeAlertModal()" id="alertModalOkBtn">OK</button>
+                <button class="btn-modal-cancel" onclick="closeAlertModal()" id="alertModalCancelBtn" style="display: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/student-dashboard.js"></script>
 </body>
 </html>
