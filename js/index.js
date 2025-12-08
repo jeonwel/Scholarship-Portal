@@ -1,3 +1,80 @@
+// ===== MODAL FUNCTIONS =====
+function showModal(type, title, message, onConfirm = null) {
+    const modalContainer = document.getElementById('modalContainer');
+    
+    let icon = 'ℹ️';
+    let confirmText = 'OK';
+    let cancelText = 'Cancel';
+    
+    switch(type) {
+        case 'info':
+            icon = 'ℹ️';
+            break;
+        case 'warning':
+            icon = '⚠️';
+            break;
+        case 'success':
+            icon = '✅';
+            break;
+        case 'error':
+            icon = '❌';
+            break;
+        case 'confirm':
+            icon = '❓';
+            confirmText = 'Yes';
+            cancelText = 'No';
+            break;
+    }
+    
+    const modalHTML = `
+        <div class="modal">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-icon">${icon}</div>
+                <p>${message}</p>
+            </div>
+            <div class="modal-footer">
+                ${type === 'confirm' ? 
+                    `<button class="btn btn-outline" onclick="closeModal()">${cancelText}</button>
+                     <button class="btn btn-primary" onclick="handleConfirm()">${confirmText}</button>` :
+                    `<button class="btn btn-primary" onclick="closeModal()">${confirmText}</button>`
+                }
+            </div>
+        </div>
+    `;
+    
+    modalContainer.innerHTML = modalHTML;
+    modalContainer.classList.add('active');
+    
+    // Store the callback function
+    if (onConfirm) {
+        modalContainer.dataset.confirmCallback = 'true';
+        window.handleConfirm = function() {
+            closeModal();
+            onConfirm();
+        };
+    }
+    
+    // Close modal when clicking outside
+    modalContainer.addEventListener('click', function(e) {
+        if (e.target === modalContainer) {
+            closeModal();
+        }
+    });
+}
+
+function closeModal() {
+    const modalContainer = document.getElementById('modalContainer');
+    modalContainer.classList.remove('active');
+    // Clean up callback
+    if (window.handleConfirm) {
+        delete window.handleConfirm;
+    }
+}
+
 // ===== SMOOTH SCROLL FUNCTION =====
 function smoothScroll(targetId) {
     const targetElement = document.getElementById(targetId);
@@ -25,8 +102,12 @@ function applyForProgram(program) {
     if (isLoggedIn === 'true') {
         window.location.href = `apply.html?program=${program}`;
     } else {
-        alert('Please login first to apply for this program.');
-        window.location.href = 'login.html';
+        showModal('warning', 'Login Required', 
+            'Please login first to apply for this program. You will be redirected to the login page.',
+            function() {
+                window.location.href = 'login.html';
+            }
+        );
     }
 }
 
@@ -74,15 +155,15 @@ function updateAuthButtons() {
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <span style="color: #1e3c72; font-weight: 600;">👑 ${username}</span>
                     <a href="admin-dashboard.html" class="btn btn-outline">Admin Panel</a>
-                    <a href="#" class="btn btn-primary" onclick="logout()">Logout</a>
+                    <a href="#" class="btn btn-primary" onclick="confirmLogout()">Logout</a>
                 </div>
             `;
         } else {
             authButtons.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 15px;">
                     <span style="color: #1e3c72; font-weight: 600;">👤 ${username}</span>
-                    <a href="dashboard.html" class="btn btn-outline">Dashboard</a>
-                    <a href="#" class="btn btn-primary" onclick="logout()">Logout</a>
+                    <a href="student-dashboard.html" class="btn btn-outline">Student Panel</a>
+                    <a href="#" class="btn btn-primary" onclick="confirmLogout()">Logout</a>
                 </div>
             `;
         }
@@ -107,9 +188,19 @@ function updateWelcomeMessage() {
     }
 }
 
+function confirmLogout() {
+    showModal('confirm', 'Confirm Logout', 
+        'Are you sure you want to logout?',
+        logout
+    );
+}
+
 function logout() {
     sessionStorage.clear();
-    window.location.reload();
+    localStorage.removeItem('users');
+    showModal('success', 'Logged Out', 'You have been successfully logged out.', function() {
+        window.location.reload();
+    });
 }
 
 // ===== MOBILE MENU FUNCTIONS =====
@@ -137,4 +228,11 @@ window.addEventListener('DOMContentLoaded', function() {
         window.location.pathname.endsWith('/')) {
         updateActiveNavLink('home');
     }
+    
+    // Close modal on ESC key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
 });

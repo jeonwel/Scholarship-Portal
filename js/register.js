@@ -10,6 +10,73 @@ let registrationData = {
 // ===== FORM FUNCTIONALITY =====
 let currentStep = 1;
 
+// ===== MODAL FUNCTIONS =====
+function showAlert(title, message, callback = null) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertModal').style.display = 'flex';
+    
+    // Store callback for when modal is closed
+    if (callback) {
+        const okButton = document.querySelector('#alertModal .btn-primary');
+        const originalOnClick = okButton.onclick;
+        okButton.onclick = function() {
+            closeAlertModal();
+            callback();
+        };
+    }
+}
+
+function closeAlertModal() {
+    document.getElementById('alertModal').style.display = 'none';
+}
+
+function showSuccess(title, message, callback = null) {
+    document.getElementById('successTitle').textContent = title;
+    document.getElementById('successMessage').textContent = message;
+    document.getElementById('successModal').style.display = 'flex';
+    
+    // Store callback for when modal is closed
+    if (callback) {
+        const okButton = document.querySelector('#successModal .btn-primary');
+        const originalOnClick = okButton.onclick;
+        okButton.onclick = function() {
+            closeSuccessModal();
+            callback();
+        };
+    }
+}
+
+function closeSuccessModal() {
+    document.getElementById('successModal').style.display = 'none';
+}
+
+// ===== SESSION CHECKING =====
+function checkExistingSession() {
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+    const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
+    
+    if (isLoggedIn || isAdminLoggedIn) {
+        const userType = isAdminLoggedIn ? 'Admin' : 'Student';
+        const username = sessionStorage.getItem('username') || 
+                       sessionStorage.getItem('adminUsername') || 
+                       'User';
+        
+        showAlert(
+            'Existing Session Detected',
+            `You are currently logged in as ${username} (${userType}).\n\nPlease logout from your current session first before registering a new account.`,
+            () => {
+                // Determine the correct dashboard to redirect to
+                if (isAdminLoggedIn) {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'student-dashboard.html';
+                }
+            }
+        );
+    }
+}
+
 // Initialize form
 updateProgress();
 setupEventListeners();
@@ -374,11 +441,15 @@ function submitForm() {
     // Save to localStorage
     if (saveToLocalStorage()) {
         // Show success message and redirect
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 500);
+        showSuccess(
+            'Registration Successful',
+            'Your account has been created successfully!\n\nYou will now be redirected to the login page.',
+            () => {
+                window.location.href = 'login.html?registered=true';
+            }
+        );
     } else {
-        alert('Error saving registration. Please try again.');
+        // Error handled inside saveToLocalStorage function
     }
 }
 
@@ -402,12 +473,18 @@ function saveToLocalStorage() {
         );
         
         if (emailExists) {
-            alert('Email already exists. Please use a different email address.');
+            showAlert(
+                'Email Already Exists',
+                'This email address is already registered. Please use a different email address.'
+            );
             return false;
         }
         
         if (usernameExists) {
-            alert('Username already exists. Please choose a different username.');
+            showAlert(
+                'Username Already Taken',
+                'This username is already taken. Please choose a different username.'
+            );
             return false;
         }
         
@@ -424,6 +501,10 @@ function saveToLocalStorage() {
         return true;
     } catch (error) {
         console.error('Error saving to localStorage:', error);
+        showAlert(
+            'Registration Error',
+            'There was an error saving your registration. Please try again.'
+        );
         return false;
     }
 }
@@ -447,5 +528,13 @@ function calculateAge(birthdate) {
 
 // Initialize
 window.addEventListener('DOMContentLoaded', function() {
+    // Check for existing session on page load
+    checkExistingSession();
+    
     console.log('Registration form ready - No program selection');
+    
+    // Set maximum birthdate to today - 16 years
+    const today = new Date();
+    const maxBirthdate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate());
+    document.getElementById('birthdate').max = maxBirthdate.toISOString().split('T')[0];
 });

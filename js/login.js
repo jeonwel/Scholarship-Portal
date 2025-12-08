@@ -8,6 +8,86 @@ let forgotUserType = 'student';
 let currentUserForReset = null;
 let originalPasswordForReset = null;
 
+// ===== CONFIRMATION MODAL VARIABLES =====
+let confirmationCallback = null;
+let confirmationCallbackParams = null;
+
+// ===== SESSION CHECKING =====
+function checkExistingSession() {
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true';
+    const isAdminLoggedIn = sessionStorage.getItem('isAdminLoggedIn') === 'true';
+    
+    if (isLoggedIn || isAdminLoggedIn) {
+        const userType = isAdminLoggedIn ? 'Admin' : 'Student';
+        const username = sessionStorage.getItem('username') || 
+                       sessionStorage.getItem('adminUsername') || 
+                       'User';
+        
+        showAlert(
+            'Existing Session Detected',
+            `You are currently logged in as ${username} (${userType}).\n\nPlease logout from your current session first before logging in with a different account.`,
+            () => {
+                // Determine the correct dashboard to redirect to
+                if (isAdminLoggedIn) {
+                    window.location.href = 'admin-dashboard.html';
+                } else {
+                    window.location.href = 'student-dashboard.html';
+                }
+            }
+        );
+    }
+}
+
+// ===== MODAL FUNCTIONS =====
+function showConfirmation(title, message, proceedCallback, params = null) {
+    document.getElementById('confirmationTitle').textContent = title;
+    document.getElementById('confirmationMessage').textContent = message;
+    confirmationCallback = proceedCallback;
+    confirmationCallbackParams = params;
+    document.getElementById('confirmationModal').style.display = 'flex';
+}
+
+function closeConfirmationModal() {
+    document.getElementById('confirmationModal').style.display = 'none';
+    confirmationCallback = null;
+    confirmationCallbackParams = null;
+}
+
+function confirmationCancel() {
+    closeConfirmationModal();
+}
+
+function confirmationProceed() {
+    if (confirmationCallback) {
+        if (confirmationCallbackParams) {
+            confirmationCallback(confirmationCallbackParams);
+        } else {
+            confirmationCallback();
+        }
+    }
+    closeConfirmationModal();
+}
+
+function showAlert(title, message, callback = null) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertModal').style.display = 'flex';
+    
+    // Store callback for when modal is closed
+    if (callback) {
+        const okButton = document.querySelector('#alertModal .btn-primary');
+        const originalOnClick = okButton.onclick;
+        okButton.onclick = function() {
+            closeAlertModal();
+            callback();
+        };
+    }
+}
+
+function closeAlertModal() {
+    document.getElementById('alertModal').style.display = 'none';
+}
+
 // ===== USER TYPE SELECTION =====
 function selectUserType(type) {
     const buttons = document.querySelectorAll('.user-type-btn');
@@ -184,25 +264,27 @@ function proceedToStep2() {
         const isSpecialAdmin = specialAdmins.includes(username.toLowerCase());
         
         if (isSpecialAdmin) {
-            if (confirm('For security reasons, admin password reset must be done by system administrator.\n\nDo you want to continue?')) {
-                userFound = true;
-                currentUserForReset = {
-                    username: username,
-                    isAdmin: true
-                };
-                originalPasswordForReset = 'admin123'; // Default admin password
-                
-                document.getElementById('securityQuestionDisplay').innerHTML = `
-                    <div style="color: #e53935;">
-                        <strong>Admin Account Detected</strong><br>
-                        Admin accounts have enhanced security. Please contact system administrator for password reset.
-                    </div>
-                `;
-                showStep(3);
-                return;
-            } else {
-                return;
-            }
+            showConfirmation(
+                'Admin Password Reset',
+                'For security reasons, admin password reset must be done by system administrator.\n\nDo you want to continue?',
+                () => {
+                    userFound = true;
+                    currentUserForReset = {
+                        username: username,
+                        isAdmin: true
+                    };
+                    originalPasswordForReset = 'admin123'; // Default admin password
+                    
+                    document.getElementById('securityQuestionDisplay').innerHTML = `
+                        <div style="color: #e53935;">
+                            <strong>Admin Account Detected</strong><br>
+                            Admin accounts have enhanced security. Please contact system administrator for password reset.
+                        </div>
+                    `;
+                    showStep(3);
+                }
+            );
+            return;
         }
     } else {
         const registeredUsers = getRegisteredUsers();
@@ -369,14 +451,18 @@ function resetPassword() {
         document.getElementById('confirmPassword').style.borderColor = '#e53935';
         
         setTimeout(() => {
-            if (confirm('That is your current password. Do you want to use it to login now?')) {
-                document.getElementById('username').value = 
-                    currentUserForReset.username || currentUserForReset.account?.username;
-                document.getElementById('password').value = newPassword;
-                selectUserType(forgotUserType);
-                closeForgotPasswordModal();
-                showStatusMessage('✅ Your current password has been filled. Click Login to continue.', 'success');
-            }
+            showConfirmation(
+                'Current Password Detected',
+                'That is your current password. Do you want to use it to login now?',
+                () => {
+                    document.getElementById('username').value = 
+                        currentUserForReset.username || currentUserForReset.account?.username;
+                    document.getElementById('password').value = newPassword;
+                    selectUserType(forgotUserType);
+                    closeForgotPasswordModal();
+                    showStatusMessage('✅ Your current password has been filled. Click Login to continue.', 'success');
+                }
+            );
         }, 100);
         
         return;
@@ -618,6 +704,9 @@ function showStatusMessage(message, type = 'success') {
 
 // ===== INITIALIZATION =====
 window.addEventListener('DOMContentLoaded', function() {
+    // Check for existing session on page load
+    checkExistingSession();
+    
     loadRememberedUser();
     
     const usernameInput = document.getElementById('username');

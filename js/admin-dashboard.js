@@ -6,6 +6,72 @@ let currentInterviewAppId = null;
 let programsData = [];
 let currentViewSection = 'overview';
 let documentRejectionReasons = JSON.parse(localStorage.getItem('documentRejectionReasons') || '{}');
+let currentActionCallback = null;
+let currentActionParams = null;
+
+// ===== MODAL FUNCTIONS =====
+function showAlert(title, message, icon = 'ℹ️', callback = null) {
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertIcon').textContent = icon;
+    
+    const okBtn = document.getElementById('alertOkBtn');
+    const cancelBtn = document.getElementById('alertCancelBtn');
+    
+    okBtn.onclick = function() {
+        document.getElementById('alertModal').style.display = 'none';
+        if (callback) callback(true);
+    };
+    
+    document.getElementById('alertModal').style.display = 'flex';
+}
+
+function showConfirm(title, message, yesCallback, noCallback = null) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    
+    const yesBtn = document.getElementById('confirmYesBtn');
+    const noBtn = document.getElementById('confirmNoBtn');
+    
+    yesBtn.onclick = function() {
+        document.getElementById('confirmModal').style.display = 'none';
+        if (yesCallback) yesCallback();
+    };
+    
+    noBtn.onclick = function() {
+        document.getElementById('confirmModal').style.display = 'none';
+        if (noCallback) noCallback();
+    };
+    
+    document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+function showRejectionModal(title, instruction, submitCallback) {
+    document.getElementById('rejectionTitle').textContent = title;
+    document.getElementById('rejectionInstruction').textContent = instruction;
+    document.getElementById('rejectionReason').value = '';
+    
+    const submitBtn = document.getElementById('rejectionSubmitBtn');
+    submitBtn.onclick = function() {
+        const reason = document.getElementById('rejectionReason').value.trim();
+        if (!reason) {
+            showAlert('Required', 'Please enter a rejection reason.', '⚠️');
+            return;
+        }
+        document.getElementById('rejectionModal').style.display = 'none';
+        submitCallback(reason);
+    };
+    
+    document.getElementById('rejectionModal').style.display = 'flex';
+}
+
+function closeRejectionModal() {
+    document.getElementById('rejectionModal').style.display = 'none';
+}
 
 // ===== INITIALIZATION =====
 window.addEventListener('DOMContentLoaded', function() {
@@ -13,7 +79,6 @@ window.addEventListener('DOMContentLoaded', function() {
     initializePrograms();
     loadAllApplicants();
     updateDashboard();
-    // Setup event listeners after everything is loaded
     setTimeout(setupEventListeners, 100);
 });
 
@@ -43,8 +108,9 @@ function checkAdminLogin() {
     }
     
     if (!isAdmin || !adminUser) {
-        alert('Please login as administrator to access this dashboard.');
-        window.location.href = 'login.html';
+        showAlert('Access Denied', 'Please login as administrator to access this dashboard.', '🔒', function() {
+            window.location.href = 'login.html';
+        });
         return;
     }
     
@@ -76,7 +142,6 @@ function checkAdminLogin() {
 
 // ===== PROGRAM MANAGEMENT =====
 function initializePrograms() {
-    // Load programs from localStorage (this is application data, not admin data)
     programsData = JSON.parse(localStorage.getItem('programsData') || '[]');
     
     if (programsData.length === 0) {
@@ -209,7 +274,7 @@ function saveProgram() {
     const description = document.getElementById('programDescription').value.trim();
     
     if (!name || !code || !totalSlots || !duration || !passingScore || !description) {
-        alert('Please fill all required fields');
+        showAlert('Required Fields', 'Please fill all required fields', '⚠️');
         return;
     }
     
@@ -245,7 +310,7 @@ function saveProgram() {
     localStorage.setItem('programsData', JSON.stringify(programsData));
     loadPrograms();
     closeModal();
-    alert('Program saved successfully!');
+    showAlert('Success', 'Program saved successfully!', '✅');
 }
 
 // ===== APPLICANT MANAGEMENT =====
@@ -275,31 +340,47 @@ function loadAllApplicants() {
                         examData = application.exam;
                     }
                     
-                    // Calculate document status - ONLY count uploaded and NOT rejected
+                    // UPDATED: For rejected applicants, don't count missing documents
                     let uploadedCount = 0;
                     let rejectedCount = 0;
                     let totalDocs = 6;
                     
                     if (application.documents) {
-                        // Count only non-rejected uploaded documents
-                        uploadedCount = Object.values(application.documents).filter(doc => 
-                            doc.uploaded && !doc.rejected
-                        ).length;
-                        
-                        // Count rejected documents
-                        rejectedCount = Object.values(application.documents).filter(doc => 
-                            doc.rejected
-                        ).length;
+                        if (application.status === 'rejected') {
+                            // For rejected applicants, only count uploaded documents
+                            uploadedCount = Object.values(application.documents).filter(doc => 
+                                doc.uploaded && !doc.rejected
+                            ).length;
+                            
+                            // Count rejected documents
+                            rejectedCount = Object.values(application.documents).filter(doc => 
+                                doc.rejected
+                            ).length;
+                            
+                            // For rejected applicants, missing documents don't count
+                            totalDocs = uploadedCount + rejectedCount;
+                        } else {
+                            // For non-rejected applicants, count normally
+                            uploadedCount = Object.values(application.documents).filter(doc => 
+                                doc.uploaded && !doc.rejected
+                            ).length;
+                            
+                            rejectedCount = Object.values(application.documents).filter(doc => 
+                                doc.rejected
+                            ).length;
+                        }
                     }
                     
                     // Check if all required documents are uploaded (excluding rejected ones)
-                    const allDocsUploaded = (uploadedCount === totalDocs) && (rejectedCount === 0);
+                    const allDocsUploaded = application.status === 'rejected' ? 
+                        true : // For rejected applicants, consider documents as "uploaded" for display
+                        (uploadedCount === 6) && (rejectedCount === 0);
                     
                     // Save document stats to application
                     application.documentsStats = {
                         uploadedCount,
                         rejectedCount,
-                        totalDocs,
+                        totalDocs: application.status === 'rejected' ? uploadedCount + rejectedCount : 6,
                         allDocsUploaded
                     };
                     
@@ -377,7 +458,7 @@ function loadAllApplicants() {
                         interviewStatus: application.interviewStatus,
                         interviewDate: application.interviewDate,
                         interviewNotes: application.interviewNotes,
-                        examFailed: examFailed // Flag to track if rejected by exam
+                        examFailed: examFailed
                     };
                     
                     allApplicants.push(applicant);
@@ -478,7 +559,6 @@ function updateStatistics() {
     document.getElementById('rejected').textContent = rejected;
 }
 
-// ===== UPDATED: Show all applicants including those rejected by exam =====
 function loadApplicantsTable() {
     const tbody = document.getElementById('applicantsTableBody');
     if (!tbody) return;
@@ -501,9 +581,17 @@ function loadApplicantsTable() {
     }
     
     displayApplicants.forEach(applicant => {
-        // Use accurate document stats - ONLY count uploaded and NOT rejected
-        const uploadedDocs = applicant.documentsStats?.uploadedCount || 0;
-        const totalDocs = 6;
+        // UPDATED: For rejected applicants, show different document count
+        let uploadedDocs = applicant.documentsStats?.uploadedCount || 0;
+        let totalDocs = applicant.status === 'rejected' ? 
+            (applicant.documentsStats?.uploadedCount || 0) + (applicant.documentsStats?.rejectedCount || 0) : 
+            6;
+        
+        // If rejected applicant has no uploaded documents, show "0/0"
+        if (applicant.status === 'rejected' && uploadedDocs === 0) {
+            totalDocs = 0;
+        }
+        
         const displayCount = `${uploadedDocs}/${totalDocs}`;
         
         // Calculate exam score
@@ -515,8 +603,8 @@ function loadApplicantsTable() {
             examScore = `${scoreValue}%`;
         }
         
-        // Check if all 6 documents are uploaded
-        const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
+        // Check if all 6 documents are uploaded (only for non-rejected)
+        const allDocsUploaded = applicant.status === 'rejected' ? true : applicant.documentsStats?.allDocsUploaded;
         
         // Check if all uploaded documents are verified
         let allDocsVerified = true;
@@ -569,13 +657,13 @@ function loadApplicantsTable() {
 function updateInterviewStatus(applicationId) {
     const applicant = allApplicants.find(app => app.applicationId === applicationId);
     if (!applicant) {
-        alert('Applicant not found!');
+        showAlert('Not Found', 'Applicant not found!', '⚠️');
         return;
     }
     
     // Disable for rejected applicants
     if (applicant.status === 'rejected') {
-        alert('Cannot schedule interview for rejected applicants!');
+        showAlert('Cannot Schedule', 'Cannot schedule interview for rejected applicants!', '❌');
         return;
     }
     
@@ -583,7 +671,7 @@ function updateInterviewStatus(applicationId) {
     
     const interviewModal = document.getElementById('interviewModal');
     if (!interviewModal) {
-        alert('Interview modal not found!');
+        showAlert('Error', 'Interview modal not found!', '⚠️');
         return;
     }
     
@@ -606,7 +694,7 @@ function saveInterviewSchedule() {
     const interviewNotes = document.getElementById('interviewNotes').value;
     
     if (!interviewDate) {
-        alert('Please select an interview date and time!');
+        showAlert('Required', 'Please select an interview date and time!', '⚠️');
         return;
     }
     
@@ -645,9 +733,9 @@ function saveInterviewSchedule() {
         }
         
         closeModal();
-        alert('Interview scheduled successfully! The status has been automatically set to "Scheduled".');
+        showAlert('Success', 'Interview scheduled successfully! The status has been automatically set to "Scheduled".', '✅');
     } else {
-        alert('Error scheduling interview!');
+        showAlert('Error', 'Error scheduling interview!', '❌');
     }
     
     currentInterviewAppId = null;
@@ -656,52 +744,51 @@ function saveInterviewSchedule() {
 function removeInterviewSchedule() {
     if (!currentInterviewAppId) return;
     
-    if (!confirm('Are you sure you want to remove the interview schedule?')) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    let updated = false;
-    
-    users.forEach(user => {
-        if (user.applications) {
-            user.applications.forEach(app => {
-                if (app.applicationId === currentInterviewAppId) {
-                    // Reset interview status
-                    app.interviewStatus = 'not-scheduled';
-                    app.interviewDate = null;
-                    app.interviewNotes = null;
-                    app.interviewCompleted = false;
-                    updated = true;
-                    
-                    // Add to timeline
-                    if (!app.timeline) app.timeline = [];
-                    app.timeline.push({
-                        date: new Date().toISOString(),
-                        event: 'Interview schedule removed'
-                    });
-                }
-            });
+    showConfirm('Remove Schedule', 'Are you sure you want to remove the interview schedule?', function() {
+        const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+        let updated = false;
+        
+        users.forEach(user => {
+            if (user.applications) {
+                user.applications.forEach(app => {
+                    if (app.applicationId === currentInterviewAppId) {
+                        // Reset interview status
+                        app.interviewStatus = 'not-scheduled';
+                        app.interviewDate = null;
+                        app.interviewNotes = null;
+                        app.interviewCompleted = false;
+                        updated = true;
+                        
+                        // Add to timeline
+                        if (!app.timeline) app.timeline = [];
+                        app.timeline.push({
+                            date: new Date().toISOString(),
+                            event: 'Interview schedule removed'
+                        });
+                    }
+                });
+            }
+        });
+        
+        if (updated) {
+            localStorage.setItem('registeredUsers', JSON.stringify(users));
+            loadAllApplicants();
+            
+            if (currentViewSection === 'applicants') {
+                loadApplicantsTable();
+            }
+            
+            closeModal();
+            showAlert('Success', 'Interview schedule removed successfully!', '✅');
+        } else {
+            showAlert('Error', 'Error removing interview schedule!', '❌');
         }
+        
+        currentInterviewAppId = null;
     });
-    
-    if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
-        loadAllApplicants();
-        
-        if (currentViewSection === 'applicants') {
-            loadApplicantsTable();
-        }
-        
-        closeModal();
-        alert('Interview schedule removed successfully!');
-    } else {
-        alert('Error removing interview schedule!');
-    }
-    
-    currentInterviewAppId = null;
 }
 
-// ===== UPDATED DOCUMENT MANAGEMENT =====
-// Store all rejected documents in one object with user identification
+// ===== DOCUMENT MANAGEMENT =====
 function updateDocumentRejectionStorage(applicationId, documentId, reason, userData, docData) {
     const rejectionKey = `${applicationId}_${documentId}`;
     const timestamp = new Date().toISOString();
@@ -722,13 +809,14 @@ function updateDocumentRejectionStorage(applicationId, documentId, reason, userD
     localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
 }
 
-// NEW: Store all documents of rejected applicants in documentRejectionReasons and clear them
 function archiveRejectedApplicantDocuments(applicationId, applicantData, rejectionReason) {
     const timestamp = new Date().toISOString();
     
     if (applicantData.documents) {
         Object.entries(applicantData.documents).forEach(([docType, docData]) => {
-            if (docData.uploaded && docData.filename) {
+            // Check if document has any uploaded data (filename or fileName)
+            const hasFileName = docData.filename || docData.fileName;
+            if (docData.uploaded && hasFileName) {
                 const rejectionKey = `${applicationId}_${docType}_application_rejection`;
                 
                 // Store in documentRejectionReasons with application rejection context
@@ -742,13 +830,15 @@ function archiveRejectedApplicantDocuments(applicationId, applicantData, rejecti
                     studentName: `${applicantData.personal.firstName} ${applicantData.personal.lastName}`,
                     studentEmail: applicantData.personal.email,
                     originalData: {
-                        filename: docData.filename,
+                        filename: docData.filename || docData.fileName,
                         type: docData.type || docType,
+                        filetype: docData.filetype || null,
+                        size: docData.size || null,
                         uploadDate: docData.lastModified || applicantData.submittedDate,
                         dataUrl: docData.dataUrl || null,
                         verified: docData.verified || false
                     },
-                    rejectionContext: 'application' // Flag to indicate this was part of application rejection
+                    rejectionContext: 'application'
                 };
             }
         });
@@ -757,72 +847,96 @@ function archiveRejectedApplicantDocuments(applicationId, applicantData, rejecti
     localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
 }
 
-// NEW: Clear all documents from applicant's application (like when admin rejects individual document)
-function clearApplicantDocuments(applicationId) {
+// UPDATED: Function to clear ALL applicant documents from storage when application is rejected
+function clearApplicantDocumentsOnRejection(applicationId) {
     const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
     let updated = false;
     
-    users.forEach(user => {
+    // Create a deep copy to modify
+    const updatedUsers = JSON.parse(JSON.stringify(users));
+    
+    updatedUsers.forEach(user => {
         if (user.applications) {
             user.applications.forEach(app => {
                 if (app.applicationId === applicationId) {
-                    // Clear all documents data - just like when admin rejects individual document
-                    app.documents = {
-                        picture: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: '2x2 ID Picture',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        },
-                        birthcert: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: 'Birth Certificate',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        },
-                        reportcard: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: 'Report Card',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        },
-                        goodmoral: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: 'Certificate of Good Moral Character',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        },
-                        tor: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: 'Transcript of Records (TOR)',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        },
-                        diploma: { 
-                            uploaded: false, 
-                            filename: null, 
-                            verified: false, 
-                            type: 'High School Diploma',
-                            dataUrl: null,
-                            lastModified: new Date().toISOString()
-                        }
+                    // Save exam data
+                    const savedExamData = app.exam || {};
+                    
+                    // Document names mapping
+                    const documentNames = {
+                        picture: '2x2 ID Picture',
+                        birthcert: 'Birth Certificate',
+                        reportcard: 'Report Card',
+                        goodmoral: 'Certificate of Good Moral Character',
+                        tor: 'Transcript of Records (TOR)',
+                        diploma: 'High School Diploma'
                     };
                     
-                    // Update application timeline
+                    // Initialize documents
+                    if (!app.documents) {
+                        app.documents = {};
+                    }
+                    
+                    // Clear ALL documents completely
+                    Object.keys(documentNames).forEach(docType => {
+                        // Get the document type name
+                        const docTypeName = (app.documents[docType] && app.documents[docType].type) || documentNames[docType];
+                        
+                        // Archive uploaded documents
+                        if (app.documents[docType] && app.documents[docType].uploaded) {
+                            const timestamp = new Date().toISOString();
+                            const rejectionKey = `${applicationId}_${docType}_application_rejection`;
+                            
+                            documentRejectionReasons[rejectionKey] = {
+                                applicationId: applicationId,
+                                documentId: docType,
+                                reason: 'Application rejected - Document cleared',
+                                rejectedBy: adminData.fullName || 'Admin',
+                                rejectionDate: timestamp,
+                                documentType: docTypeName,
+                                studentName: `${user.personal.firstName} ${user.personal.lastName}`,
+                                studentEmail: user.personal.email,
+                                originalData: {
+                                    filename: app.documents[docType].filename || app.documents[docType].fileName,
+                                    type: app.documents[docType].type,
+                                    filetype: app.documents[docType].filetype,
+                                    size: app.documents[docType].size,
+                                    uploadDate: app.documents[docType].lastModified || app.submittedDate,
+                                    dataUrl: app.documents[docType].dataUrl,
+                                    verified: app.documents[docType].verified || false
+                                },
+                                rejectionContext: 'application'
+                            };
+                        }
+                        
+                        // COMPLETELY RESET the document
+                        app.documents[docType] = {
+                            uploaded: false,
+                            filename: null,
+                            filetype: null,
+                            size: null,
+                            verified: false,
+                            rejected: true,
+                            type: docTypeName,
+                            dataUrl: null,
+                            lastModified: new Date().toISOString()
+                        };
+                    });
+                    
+                    // Restore exam data
+                    app.exam = savedExamData;
+                    
+                    // Clear interview data
+                    app.interviewStatus = 'not-scheduled';
+                    app.interviewDate = null;
+                    app.interviewNotes = null;
+                    app.interviewCompleted = false;
+                    
+                    // Add timeline
                     if (!app.timeline) app.timeline = [];
                     app.timeline.push({
                         date: new Date().toISOString(),
-                        event: 'All documents archived and cleared due to application rejection'
+                        event: 'Application rejected - All documents cleared and marked as rejected'
                     });
                     
                     updated = true;
@@ -832,7 +946,18 @@ function clearApplicantDocuments(applicationId) {
     });
     
     if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
+        // Save document rejections
+        localStorage.setItem('documentRejectionReasons', JSON.stringify(documentRejectionReasons));
+        
+        // Save the updated users
+        localStorage.setItem('registeredUsers', JSON.stringify(updatedUsers));
+        
+        // Force reload the data
+        loadAllApplicants();
+        updateDashboard();
+        
+        // Show success message
+        showAlert('Success', 'All documents cleared and marked as rejected!', '✅');
     }
     
     return updated;
@@ -863,11 +988,11 @@ function loadDocumentsTable() {
         if (applicant.documents) {
             Object.entries(applicant.documents).forEach(([docType, docData]) => {
                 // Show only pending documents (uploaded but not verified)
-                if (docData.uploaded && docData.filename && !docData.verified) {
+                if (docData.uploaded && (docData.filename || docData.fileName) && !docData.verified) {
                     allDocuments.push({
                         studentName: `${applicant.personal.firstName} ${applicant.personal.lastName}`,
                         docType: docData.type || docType,
-                        fileName: docData.filename,
+                        fileName: docData.filename || docData.fileName,
                         uploadDate: docData.lastModified || applicant.submittedDate,
                         status: 'pending',
                         applicantId: applicant.applicationId,
@@ -915,7 +1040,7 @@ function loadDocumentsTable() {
 function viewDocument(applicationId, documentId) {
     const applicant = allApplicants.find(app => app.applicationId === applicationId);
     if (!applicant || !applicant.documents || !applicant.documents[documentId]) {
-        alert('Document not found!');
+        showAlert('Not Found', 'Document not found!', '⚠️');
         return;
     }
     
@@ -926,18 +1051,22 @@ function viewDocument(applicationId, documentId) {
     // Get stored file data URL from document
     const fileDataUrl = doc.dataUrl;
     
+    // Get filename (handle both filename and fileName properties)
+    const fileName = doc.filename || doc.fileName || '';
+    const fileNameLower = fileName.toLowerCase();
+    
     // Check if file is an image based on filename or data URL
-    const fileName = doc.filename.toLowerCase();
-    const isImage = fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || 
-                    fileName.endsWith('.png') || fileName.endsWith('.gif') || 
-                    fileName.endsWith('.bmp') || fileName.endsWith('.webp') ||
+    const isImage = fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg') || 
+                    fileNameLower.endsWith('.png') || fileNameLower.endsWith('.gif') || 
+                    fileNameLower.endsWith('.bmp') || fileNameLower.endsWith('.webp') ||
                     (fileDataUrl && fileDataUrl.startsWith('data:image/'));
     
+    // REMOVED: Approve and Reject buttons from document preview
     modalContent.innerHTML = `
         <h4 style="color: var(--primary-blue); margin-bottom: 20px;">${doc.type || documentId}</h4>
         <div style="text-align: center;">
             <p><strong>Student:</strong> ${applicant.personal.firstName} ${applicant.personal.lastName}</p>
-            <p><strong>File Name:</strong> ${doc.filename}</p>
+            <p><strong>File Name:</strong> ${fileName || 'N/A'}</p>
             <p><strong>Uploaded:</strong> ${formatDate(doc.lastModified || applicant.submittedDate)}</p>
             <p><strong>Status:</strong> 
                 <span class="status-badge ${doc.verified ? 'badge-approved' : 'badge-pending'}">
@@ -950,14 +1079,14 @@ function viewDocument(applicationId, documentId) {
                 <h5 style="color: var(--primary-blue); margin-bottom: 15px;">Image Preview</h5>
                 <div style="max-width: 100%; overflow: hidden; text-align: center;">
                     <img src="${fileDataUrl}" 
-                         alt="${doc.filename}" 
+                         alt="${fileName}" 
                          style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
                                 ${documentId === 'picture' ? 'width: 200px; height: 200px; object-fit: cover; border: 3px solid var(--primary-blue);' : ''}">
                 </div>
                 ` : `
                 <div style="color: var(--medium-gray);">
                     <h5>Document Preview</h5>
-                    <p>File type: ${fileName.split('.').pop().toUpperCase()}</p>
+                    <p>File type: ${fileName ? fileName.split('.').pop().toUpperCase() : 'N/A'}</p>
                     <p><em>Document content would be displayed here for PDFs and other formats.</em></p>
                     ${fileDataUrl ? `
                     <div style="margin-top: 20px;">
@@ -971,15 +1100,7 @@ function viewDocument(applicationId, documentId) {
             </div>
             
             <div style="margin-top: 30px;">
-                ${!doc.verified ? `
-                <button class="btn-filter" onclick="verifyDocument('${applicationId}', '${documentId}', true)" style="background: var(--success);">
-                    Verify Document
-                </button>
-                <button class="btn-filter" onclick="rejectDocument('${applicationId}', '${documentId}', true)" style="background: var(--danger);">
-                    Reject Document
-                </button>
-                ` : ''}
-                <button class="btn-filter" onclick="closeModal()" style="margin-left: 10px;">
+                <button class="btn-filter" onclick="closeModal()">
                     Close
                 </button>
             </div>
@@ -990,123 +1111,131 @@ function viewDocument(applicationId, documentId) {
 }
 
 function verifyDocument(applicationId, documentId, fromModal = false) {
-    if (!confirm('Are you sure you want to verify this document?')) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    let updated = false;
-    
-    users.forEach(user => {
-        if (user.applications) {
-            user.applications.forEach(app => {
-                if (app.applicationId === applicationId && app.documents && app.documents[documentId]) {
-                    // Mark document as verified
-                    app.documents[documentId].verified = true;
-                    app.documents[documentId].verifiedBy = adminData.fullName || 'Admin';
-                    app.documents[documentId].verificationDate = new Date().toISOString();
-                    
-                    // Check if all documents are verified
-                    const allDocsVerified = app.documents ? 
-                        Object.values(app.documents).every(doc => doc.uploaded && doc.verified) : false;
-                    
-                    if (allDocsVerified && app.exam && app.exam.passed) {
-                        app.status = 'waiting';
-                        app.adminReview = {
-                            reviewDate: new Date().toISOString(),
-                            reviewer: adminData.fullName || 'Admin',
-                            decision: 'under-review',
-                            notes: 'All documents verified. Application ready for final review.'
-                        };
+    showConfirm('Verify Document', 'Are you sure you want to verify this document?', function() {
+        const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+        let updated = false;
+        
+        users.forEach(user => {
+            if (user.applications) {
+                user.applications.forEach(app => {
+                    if (app.applicationId === applicationId && app.documents && app.documents[documentId]) {
+                        // Mark document as verified
+                        app.documents[documentId].verified = true;
+                        app.documents[documentId].verifiedBy = adminData.fullName || 'Admin';
+                        app.documents[documentId].verificationDate = new Date().toISOString();
                         
-                        if (!app.timeline) app.timeline = [];
-                        app.timeline.push({
-                            date: new Date().toISOString(),
-                            event: 'All documents verified by administrator'
-                        });
-                        app.timeline.push({
-                            date: new Date().toISOString(),
-                            event: 'Application complete - Ready for final approval'
-                        });
+                        // Check if all documents are verified
+                        const allDocsVerified = app.documents ? 
+                            Object.values(app.documents).every(doc => doc.uploaded && doc.verified) : false;
+                        
+                        if (allDocsVerified && app.exam && app.exam.passed) {
+                            app.status = 'waiting';
+                            app.adminReview = {
+                                reviewDate: new Date().toISOString(),
+                                reviewer: adminData.fullName || 'Admin',
+                                decision: 'under-review',
+                                notes: 'All documents verified. Application ready for final review.'
+                            };
+                            
+                            if (!app.timeline) app.timeline = [];
+                            app.timeline.push({
+                                date: new Date().toISOString(),
+                                event: 'All documents verified by administrator'
+                            });
+                            app.timeline.push({
+                                date: new Date().toISOString(),
+                                event: 'Application complete - Ready for final approval'
+                            });
+                        }
+                        
+                        updated = true;
                     }
-                    
-                    updated = true;
-                }
-            });
+                });
+            }
+        });
+        
+        if (updated) {
+            localStorage.setItem('registeredUsers', JSON.stringify(users));
+            loadAllApplicants();
+            loadDocumentsTable(); // Document will be removed from review table
+            
+            if (fromModal) {
+                closeModal();
+            }
+            showAlert('Success', 'Document verified successfully!', '✅');
+        } else {
+            showAlert('Error', 'Error verifying document!', '❌');
         }
     });
-    
-    if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
-        loadAllApplicants();
-        loadDocumentsTable(); // Document will be removed from review table
-        
-        if (fromModal) {
-            closeModal();
-        }
-        alert('Document verified successfully!');
-    } else {
-        alert('Error verifying document!');
-    }
 }
 
 function rejectDocument(applicationId, documentId, fromModal = false) {
-    const reason = prompt('Please enter the reason for rejecting this document:');
-    if (!reason) return;
-    
-    if (!confirm('Are you sure you want to reject this document? The document will be removed and the student will need to re-upload it.')) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    let updated = false;
-    
-    users.forEach(user => {
-        if (user.applications) {
-            user.applications.forEach(app => {
-                if (app.applicationId === applicationId && app.documents && app.documents[documentId]) {
-                    // Save document data before deleting
-                    const docData = {
-                        filename: app.documents[documentId].filename,
-                        type: app.documents[documentId].type,
-                        lastModified: app.documents[documentId].lastModified,
-                        dataUrl: app.documents[documentId].dataUrl
-                    };
+    showRejectionModal(
+        'Reject Document',
+        'Please provide a reason for rejecting this document. The document will be removed and the student will need to re-upload it.',
+        function(reason) {
+            showConfirm('Confirm Rejection', 'Are you sure you want to reject this document? The document will be removed and the student will need to re-upload it.', function() {
+                const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                let updated = false;
+                
+                users.forEach(user => {
+                    if (user.applications) {
+                        user.applications.forEach(app => {
+                            if (app.applicationId === applicationId && app.documents && app.documents[documentId]) {
+                                // Save document data before deleting
+                                const docData = {
+                                    filename: app.documents[documentId].filename || app.documents[documentId].fileName,
+                                    type: app.documents[documentId].type,
+                                    filetype: app.documents[documentId].filetype,
+                                    size: app.documents[documentId].size,
+                                    lastModified: app.documents[documentId].lastModified,
+                                    dataUrl: app.documents[documentId].dataUrl
+                                };
+                                
+                                // Store rejection in documentRejectionReasons
+                                updateDocumentRejectionStorage(applicationId, documentId, reason, user, docData);
+                                
+                                // Clear the document from student's application
+                                app.documents[documentId] = {
+                                    uploaded: false,      // ← Marks as not uploaded
+                                    filename: null,       // ← Clears filename
+                                    filetype: null,       // ← Clears file type
+                                    size: null,           // ← Clears file size
+                                    verified: false,      // ← Resets verification
+                                    rejected: true,       // ← CRITICAL: Marks document as rejected
+                                    type: docData.type || documentId,
+                                    dataUrl: null,        // ← REMOVES the actual file data/URL
+                                    lastModified: new Date().toISOString()
+                                };
+                                
+                                // Update application timeline
+                                if (!app.timeline) app.timeline = [];
+                                app.timeline.push({
+                                    date: new Date().toISOString(),
+                                    event: `Document "${documentId}" rejected - Student needs to re-upload`
+                                });
+                                
+                                updated = true;
+                            }
+                        });
+                    }
+                });
+                
+                if (updated) {
+                    localStorage.setItem('registeredUsers', JSON.stringify(users));
+                    loadAllApplicants();
+                    loadDocumentsTable(); // Document will vanish from review table
                     
-                    // Store rejection in documentRejectionReasons
-                    updateDocumentRejectionStorage(applicationId, documentId, reason, user, docData);
-                    
-                    // Clear the document from student's application (just like when rejecting an application)
-                    app.documents[documentId] = {
-                        uploaded: false,
-                        filename: null,
-                        verified: false,
-                        type: docData.type || documentId,
-                        dataUrl: null,
-                        lastModified: new Date().toISOString()
-                    };
-                    
-                    // Update application timeline
-                    if (!app.timeline) app.timeline = [];
-                    app.timeline.push({
-                        date: new Date().toISOString(),
-                        event: `Document "${documentId}" rejected - Student needs to re-upload`
-                    });
-                    
-                    updated = true;
+                    if (fromModal) {
+                        closeModal();
+                    }
+                    showAlert('Document Rejected', 'Document rejected and removed! The student will need to re-upload it with corrections.', '✅');
+                } else {
+                    showAlert('Error', 'Error rejecting document!', '❌');
                 }
             });
         }
-    });
-    
-    if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
-        loadAllApplicants();
-        loadDocumentsTable(); // Document will vanish from review table
-        
-        if (fromModal) {
-            closeModal();
-        }
-        alert('Document rejected and removed! The student will need to re-upload it with corrections.');
-    } else {
-        alert('Error rejecting document!');
-    }
+    );
 }
 
 // ===== EXAM RESULTS =====
@@ -1120,7 +1249,7 @@ function loadExamResults() {
     const userExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
     const examTakers = [];
     
-    // Match exam data with applicants
+    // Match exam data with applicants - INCLUDE REJECTED APPLICANTS TOO
     Object.entries(userExamData).forEach(([key, examData]) => {
         // Check if this exam data has taken property or score
         if ((examData.taken || examData.completedAt) && (examData.score || examData.score?.percentage !== undefined)) {
@@ -1172,6 +1301,21 @@ function loadExamResults() {
         }
     });
     
+    // Also check all applicants directly for exam data (including rejected ones)
+    allApplicants.forEach(applicant => {
+        if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
+            // Check if already added from userExamData
+            const alreadyAdded = examTakers.some(taker => 
+                taker.applicationId === applicant.applicationId || 
+                taker.account?.username === applicant.account?.username
+            );
+            
+            if (!alreadyAdded) {
+                examTakers.push(applicant);
+            }
+        }
+    });
+    
     if (examTakers.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -1187,7 +1331,11 @@ function loadExamResults() {
     
     // Calculate statistics
     const totalExams = examTakers.length;
-    const passedExams = examTakers.filter(app => app.exam.passed).length;
+    const passedExams = examTakers.filter(app => 
+        (app.exam.score && typeof app.exam.score === 'object' && 'percentage' in app.exam.score 
+            ? app.exam.score.percentage 
+            : (app.exam.score || 0)) >= 75
+    ).length;
     const passRate = totalExams > 0 ? Math.round((passedExams / totalExams) * 100) : 0;
     
     // Calculate top score
@@ -1210,7 +1358,7 @@ function loadExamResults() {
     
     updateExamStats(totalExams, passRate, topScore);
     
-    // Populate table
+    // Populate table - INCLUDING REJECTED APPLICANTS
     examTakers.forEach(applicant => {
         const row = document.createElement('tr');
         const scoreValue = applicant.exam.score && typeof applicant.exam.score === 'object' && 'percentage' in applicant.exam.score 
@@ -1221,41 +1369,66 @@ function loadExamResults() {
             <td>${applicant.personal.firstName} ${applicant.personal.lastName}</td>
             <td>${getProgramName(applicant.program) || 'N/A'}</td>
             <td>${scoreValue}%</td>
-            <td><span class="status-badge ${applicant.exam.passed ? 'badge-approved' : 'badge-rejected'}">${applicant.exam.passed ? 'Passed' : 'Failed'}</span></td>
-            <td>${applicant.exam.dateTaken ? formatDate(applicant.exam.dateTaken) : 'N/A'}</td>
+            <td><span class="status-badge ${scoreValue >= 75 ? 'badge-approved' : 'badge-rejected'}">${scoreValue >= 75 ? 'Passed' : 'Failed'}</span></td>
+            <td>${applicant.exam.dateTaken || applicant.exam.completedAt ? formatDate(applicant.exam.dateTaken || applicant.exam.completedAt) : 'N/A'}</td>
             <td>
-                <button class="btn-icon btn-view" onclick="viewExamDetails('${applicant.applicationId}')" title="View Details">👁️</button>
+                <button class="btn-icon btn-view" onclick="viewExamDetails('${applicant.applicationId || applicant.account?.username}')" title="View Details">👁️</button>
             </td>
         `;
         tbody.appendChild(row);
     });
 }
 
-function viewExamDetails(applicationId) {
-    const applicant = allApplicants.find(app => app.applicationId === applicationId);
+function viewExamDetails(identifier) {
+    // identifier can be applicationId or username
+    let applicant = allApplicants.find(app => 
+        app.applicationId === identifier || app.account?.username === identifier
+    );
+    
+    // If not found in allApplicants, check userExamData
     if (!applicant) {
-        alert('Applicant not found!');
+        const userExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
+        const examData = userExamData[identifier];
+        
+        if (examData) {
+            // Try to find user data
+            const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            const user = users.find(u => 
+                u.account?.username === identifier || 
+                (u.applications && u.applications.some(app => app.applicationId === identifier))
+            );
+            
+            if (user) {
+                applicant = {
+                    personal: user.personal,
+                    account: user.account,
+                    exam: examData,
+                    applicationId: identifier,
+                    program: user.applications?.[0]?.program
+                };
+            } else {
+                applicant = {
+                    personal: { firstName: 'Unknown', lastName: 'Student', email: 'N/A' },
+                    exam: examData,
+                    applicationId: identifier,
+                    program: 'N/A'
+                };
+            }
+        }
+    }
+    
+    if (!applicant) {
+        showAlert('Not Found', 'Exam details not found!', '⚠️');
         return;
     }
     
-    // Get exam data from userExamData (check both username and applicationId)
-    const userExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
-    let examData = null;
-    
-    if (applicant.account?.username && userExamData[applicant.account.username]) {
-        examData = userExamData[applicant.account.username];
-    } else if (userExamData[applicationId]) {
-        examData = userExamData[applicationId];
-    } else if (applicant.exam && (applicant.exam.taken || applicant.exam.completedAt)) {
-        examData = applicant.exam;
-    }
-    
-    if (!examData) {
-        alert('Exam details not found!');
-        return;
-    }
+    const examData = applicant.exam;
     
     const modalContent = document.getElementById('applicantDetails');
+    const scoreValue = examData.score && typeof examData.score === 'object' && 'percentage' in examData.score 
+        ? examData.score.percentage 
+        : (examData.score || 0);
+        
     modalContent.innerHTML = `
         <h3 style="color: var(--primary-blue); margin-bottom: 20px;">Exam Details</h3>
         
@@ -1267,25 +1440,29 @@ function viewExamDetails(applicationId) {
                     <div class="detail-value">${applicant.personal.firstName} ${applicant.personal.lastName}</div>
                 </div>
                 <div class="detail-row">
-                    <div class="detail-label">Program:</div>
-                    <div class="detail-value">${getProgramName(applicant.program)}</div>
+                    <div class="detail-label">Email:</div>
+                    <div class="detail-value">${applicant.personal.email || 'N/A'}</div>
                 </div>
                 <div class="detail-row">
-                    <div class="detail-label">Application ID:</div>
-                    <div class="detail-value">${applicationId}</div>
+                    <div class="detail-label">Program:</div>
+                    <div class="detail-value">${getProgramName(applicant.program) || 'N/A'}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Identifier:</div>
+                    <div class="detail-value">${applicant.applicationId || identifier}</div>
                 </div>
             </div>
             
             <div class="detail-section">
                 <h4>Exam Results</h4>
                 <div class="exam-results">
-                    <div class="exam-score">${examData.score?.percentage || examData.score || 0}%</div>
+                    <div class="exam-score">${scoreValue}%</div>
                     <div class="exam-details-extended">
                         <div class="detail-row">
                             <div class="detail-label">Result:</div>
                             <div class="detail-value">
-                                <span class="status-badge ${(examData.score?.percentage >= 75 || examData.score >= 75) ? 'badge-approved' : 'badge-rejected'}">
-                                    ${(examData.score?.percentage >= 75 || examData.score >= 75) ? 'Passed' : 'Failed'}
+                                <span class="status-badge ${scoreValue >= 75 ? 'badge-approved' : 'badge-rejected'}">
+                                    ${scoreValue >= 75 ? 'Passed' : 'Failed'}
                                 </span>
                             </div>
                         </div>
@@ -1416,13 +1593,13 @@ function sortApplicants(sortBy) {
 function viewApplicant(applicationId) {
     const applicant = allApplicants.find(app => app.applicationId === applicationId);
     if (!applicant) {
-        alert('Applicant not found!');
+        showAlert('Not Found', 'Applicant not found!', '⚠️');
         return;
     }
     
     const modalContent = document.getElementById('applicantDetails');
     if (!modalContent) {
-        alert('Modal content not found!');
+        showAlert('Error', 'Modal content not found!', '⚠️');
         return;
     }
     
@@ -1460,7 +1637,10 @@ function viewApplicant(applicationId) {
             let statusClass = '';
             let statusText = '';
             
-            if (doc.verified) {
+            if (doc.rejected) {
+                statusClass = 'badge-rejected';
+                statusText = 'Rejected';
+            } else if (doc.verified) {
                 statusClass = 'badge-approved';
                 statusText = 'Verified';
             } else if (doc.uploaded) {
@@ -1481,9 +1661,9 @@ function viewApplicant(applicationId) {
                             </span>
                         </div>
                     </div>
-                    ${doc.uploaded ? `
+                    ${doc.uploaded && !doc.rejected ? `
                         <p style="margin-top: 10px; font-size: 12px;">
-                            File: ${doc.filename}<br>
+                            File: ${doc.filename || doc.fileName || 'N/A'}<br>
                             ${doc.verified ? `Verified by: ${doc.verifiedBy || 'Admin'} on ${formatDate(doc.verificationDate)}` : ''}
                         </p>
                         ${doc.dataUrl ? `
@@ -1493,18 +1673,22 @@ function viewApplicant(applicationId) {
                             </button>
                         </div>
                         ` : ''}
+                    ` : doc.rejected ? `
+                        <p style="margin-top: 10px; font-size: 12px; color: #e53935;">
+                            <em>Document cleared and marked as rejected</em>
+                        </p>
                     ` : ''}
                 </div>
             `;
         });
     }
     
-    // Check if all 6 documents are uploaded
-    const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
+    // Check if all 6 documents are uploaded (only for non-rejected)
+    const allDocsUploaded = applicant.status === 'rejected' ? true : applicant.documentsStats?.allDocsUploaded;
     
     // Check if all uploaded documents are verified
     let allDocsVerified = true;
-    if (applicant.documents) {
+    if (applicant.documents && applicant.status !== 'rejected') {
         allDocsVerified = Object.values(applicant.documents).every(doc => 
             !doc.uploaded || (doc.uploaded && doc.verified)
         );
@@ -1593,9 +1777,13 @@ function viewApplicant(applicationId) {
                 </div>
                 
                 <div style="margin-top: 15px; font-size: 14px; color: #666">
+                    ${applicant.status === 'rejected' ? `
+                    <strong>Document Status:</strong> All documents cleared and marked as rejected
+                    ` : `
                     <strong>Document Progress:</strong> ${applicant.documentsStats?.uploadedCount || 0}/6 uploaded
                     ${allDocsUploaded ? '✓ All documents uploaded' : '✗ Not all documents uploaded'}
                     ${allDocsUploaded && allDocsVerified ? '✓ All documents verified' : allDocsUploaded ? '✗ Not all documents verified' : ''}
+                    `}
                 </div>
                 
                 ${documentRejectionsHTML ? `
@@ -1682,14 +1870,14 @@ function viewApplicant(applicationId) {
 function approveApplication(applicationId, fromModal = false) {
     const applicant = allApplicants.find(app => app.applicationId === applicationId);
     if (!applicant) {
-        alert('Applicant not found!');
+        showAlert('Not Found', 'Applicant not found!', '⚠️');
         return;
     }
     
     // Check if all 6 documents are uploaded
     const allDocsUploaded = applicant.documentsStats?.allDocsUploaded;
     if (!allDocsUploaded) {
-        alert('Cannot approve application! All 6 documents must be uploaded.');
+        showAlert('Cannot Approve', 'Cannot approve application! All 6 documents must be uploaded.', '❌');
         return;
     }
     
@@ -1717,7 +1905,7 @@ function approveApplication(applicationId, fromModal = false) {
         };
         
         const unverifiedDocNames = unverifiedDocs.map(doc => docNames[doc] || doc).join(', ');
-        alert(`Cannot approve application! The following documents are not verified: ${unverifiedDocNames}`);
+        showAlert('Cannot Approve', `Cannot approve application! The following documents are not verified: ${unverifiedDocNames}`, '❌');
         return;
     }
     
@@ -1728,137 +1916,133 @@ function approveApplication(applicationId, fromModal = false) {
             : (applicant.exam.score || 0)) >= 75);
     
     if (!examPassed) {
-        alert('Cannot approve application! Applicant must pass the exam (score ≥ 75%).');
+        showAlert('Cannot Approve', 'Cannot approve application! Applicant must pass the exam (score ≥ 75%).', '❌');
         return;
     }
     
-    if (!confirm('Are you sure you want to approve this application?')) return;
-    
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    let updated = false;
-    
-    users.forEach(user => {
-        if (user.applications) {
-            user.applications.forEach(app => {
-                if (app.applicationId === applicationId) {
-                    // ===== Automatically verify all documents when approving =====
-                    if (app.documents) {
-                        Object.entries(app.documents).forEach(([docType, doc]) => {
-                            if (doc.uploaded && !doc.verified) {
-                                doc.verified = true;
-                                doc.verifiedBy = adminData.fullName || 'Admin';
-                                doc.verificationDate = new Date().toISOString();
-                            }
+    showConfirm('Approve Application', 'Are you sure you want to approve this application?', function() {
+        const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+        let updated = false;
+        
+        users.forEach(user => {
+            if (user.applications) {
+                user.applications.forEach(app => {
+                    if (app.applicationId === applicationId) {
+                        // Automatically verify all documents when approving
+                        if (app.documents) {
+                            Object.entries(app.documents).forEach(([docType, doc]) => {
+                                if (doc.uploaded && !doc.verified) {
+                                    doc.verified = true;
+                                    doc.verifiedBy = adminData.fullName || 'Admin';
+                                    doc.verificationDate = new Date().toISOString();
+                                }
+                            });
+                        }
+                        
+                        app.status = 'approved';
+                        app.adminReview = {
+                            reviewDate: new Date().toISOString(),
+                            reviewer: adminData.fullName || 'Admin',
+                            decision: 'approved',
+                            notes: 'Application approved by administrator. All documents automatically verified.'
+                        };
+                        
+                        if (!app.timeline) app.timeline = [];
+                        app.timeline.push({
+                            date: new Date().toISOString(),
+                            event: 'All documents automatically verified upon approval'
                         });
+                        app.timeline.push({
+                            date: new Date().toISOString(),
+                            event: 'Application approved by administrator'
+                        });
+                        
+                        updated = true;
                     }
-                    
-                    app.status = 'approved';
-                    app.adminReview = {
-                        reviewDate: new Date().toISOString(),
-                        reviewer: adminData.fullName || 'Admin',
-                        decision: 'approved',
-                        notes: 'Application approved by administrator. All documents automatically verified.'
-                    };
-                    
-                    if (!app.timeline) app.timeline = [];
-                    app.timeline.push({
-                        date: new Date().toISOString(),
-                        event: 'All documents automatically verified upon approval'
-                    });
-                    app.timeline.push({
-                        date: new Date().toISOString(),
-                        event: 'Application approved by administrator'
-                    });
-                    
-                    updated = true;
-                }
-            });
+                });
+            }
+        });
+        
+        if (updated) {
+            localStorage.setItem('registeredUsers', JSON.stringify(users));
+            
+            loadAllApplicants();
+            updateDashboard();
+            
+            if (fromModal) {
+                closeModal();
+                setTimeout(() => {
+                    viewApplicant(applicationId);
+                }, 100);
+            } else {
+                refreshCurrentView();
+            }
+            
+            showAlert('Success', 'Application approved successfully! All documents have been automatically verified.', '✅');
+        } else {
+            showAlert('Error', 'Application not found!', '❌');
         }
     });
-    
-    if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
-        
-        loadAllApplicants();
-        updateDashboard();
-        
-        if (fromModal) {
-            closeModal();
-            setTimeout(() => {
-                viewApplicant(applicationId);
-            }, 100);
-        } else {
-            refreshCurrentView();
-        }
-        
-        alert('Application approved successfully! All documents have been automatically verified.');
-    } else {
-        alert('Error: Application not found!');
-    }
 }
 
+// MODIFIED: Function to reject application and clear documents just like document rejection
 function rejectApplication(applicationId, fromModal = false) {
-    const reason = prompt('Please enter the reason for rejection:');
-    if (!reason) return;
-    
     const applicant = allApplicants.find(app => app.applicationId === applicationId);
     if (!applicant) {
-        alert('Applicant not found!');
+        showAlert('Not Found', 'Applicant not found!', '⚠️');
         return;
     }
     
-    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    let updated = false;
-    
-    users.forEach(user => {
-        if (user.applications) {
-            user.applications.forEach(app => {
-                if (app.applicationId === applicationId) {
-                    // NEW: Archive all documents to documentRejectionReasons before clearing
-                    archiveRejectedApplicantDocuments(applicationId, applicant, reason);
+    showRejectionModal(
+        'Reject Application',
+        'Please provide a reason for rejecting this application. All documents will be cleared and marked as rejected.',
+        function(reason) {
+            showConfirm('Confirm Rejection', 'Are you sure? All documents will be cleared.', function() {
+                // First clear all documents
+                const documentsCleared = clearApplicantDocumentsOnRejection(applicationId);
+                
+                if (documentsCleared) {
+                    // Now update the application status
+                    const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+                    let statusUpdated = false;
                     
-                    // NEW: Clear all documents from applicant's application (just like when rejecting individual documents)
-                    clearApplicantDocuments(applicationId);
-                    
-                    app.status = 'rejected';
-                    app.adminReview = {
-                        reviewDate: new Date().toISOString(),
-                        reviewer: adminData.fullName || 'Admin',
-                        decision: 'rejected',
-                        notes: reason
-                    };
-                    
-                    if (!app.timeline) app.timeline = [];
-                    app.timeline.push({
-                        date: new Date().toISOString(),
-                        event: 'Application rejected by administrator - All documents archived to rejection storage'
+                    users.forEach(user => {
+                        if (user.applications) {
+                            user.applications.forEach(app => {
+                                if (app.applicationId === applicationId) {
+                                    app.status = 'rejected';
+                                    app.adminReview = {
+                                        reviewDate: new Date().toISOString(),
+                                        reviewer: adminData.fullName || 'Admin',
+                                        decision: 'rejected',
+                                        notes: reason
+                                    };
+                                    
+                                    statusUpdated = true;
+                                }
+                            });
+                        }
                     });
                     
-                    updated = true;
+                    if (statusUpdated) {
+                        localStorage.setItem('registeredUsers', JSON.stringify(users));
+                        
+                        // Force reload
+                        loadAllApplicants();
+                        updateDashboard();
+                        
+                        if (fromModal) {
+                            closeModal();
+                        } else {
+                            refreshCurrentView();
+                        }
+                        
+                        showAlert('Success', 'Application rejected! All documents cleared.', '✅');
+                    }
                 }
             });
         }
-    });
-    
-    if (updated) {
-        localStorage.setItem('registeredUsers', JSON.stringify(users));
-        
-        loadAllApplicants();
-        updateDashboard();
-        
-        if (fromModal) {
-            closeModal();
-            setTimeout(() => {
-                viewApplicant(applicationId);
-            }, 100);
-        } else {
-            refreshCurrentView();
-        }
-        
-        alert('Application rejected successfully! All documents have been archived to rejection storage and cleared from the application.');
-    } else {
-        alert('Error: Application not found!');
-    }
+    );
 }
 
 // ===== SECTION MANAGEMENT =====
@@ -1897,9 +2081,349 @@ function showSection(sectionId) {
             loadPrograms();
             break;
         case 'reports':
-            loadReportsSection();
+            // Reports are loaded via HTML
             break;
     }
+}
+
+// ===== REPORTS FUNCTIONS =====
+function generateReport(reportType) {
+    let reportData = {};
+    let reportTitle = '';
+    let reportDescription = '';
+    
+    switch(reportType) {
+        case 'applicationStatus':
+            reportTitle = 'Application Status Report';
+            reportDescription = 'Comprehensive breakdown of all applications by current status';
+            const statusCounts = {
+                'Waiting Review': allApplicants.filter(app => app.status === 'waiting').length,
+                'Approved': allApplicants.filter(app => app.status === 'approved').length,
+                'Rejected': allApplicants.filter(app => app.status === 'rejected').length
+            };
+            reportData = statusCounts;
+            break;
+            
+        case 'examPerformance':
+            reportTitle = 'Exam Performance Report';
+            reportDescription = 'Detailed analysis of exam scores and performance metrics';
+            const userExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
+            const examTakers = Object.values(userExamData).filter(exam => (exam.taken || exam.completedAt));
+            const passed = examTakers.filter(exam => (exam.score?.percentage >= 75 || exam.score >= 75)).length;
+            const failed = examTakers.length - passed;
+            
+            // Calculate top score
+            let topScore = 0;
+            examTakers.forEach(exam => {
+                let scoreValue;
+                
+                if (exam.score && typeof exam.score === 'object' && 'percentage' in exam.score) {
+                    scoreValue = exam.score.percentage;
+                } else if (exam.score && typeof exam.score === 'number') {
+                    scoreValue = exam.score;
+                } else {
+                    scoreValue = 0;
+                }
+                
+                if (scoreValue !== undefined && scoreValue !== null && !isNaN(scoreValue) && scoreValue > topScore) {
+                    topScore = scoreValue;
+                }
+            });
+            
+            const passRate = examTakers.length > 0 ? Math.round((passed / examTakers.length) * 100) : 0;
+            
+            reportData = {
+                'Total Exams Taken': examTakers.length,
+                'Passed': passed,
+                'Failed': failed,
+                'Pass Rate': `${passRate}%`,
+                'Top Score': `${topScore}%`,
+                'Minimum Passing Score': '75%'
+            };
+            break;
+            
+        case 'programStatistics':
+            reportTitle = 'Program Statistics Report';
+            reportDescription = 'Comprehensive statistics for each training program';
+            const programStats = {};
+            
+            programsData.forEach(program => {
+                const programApps = allApplicants.filter(app => app.program === program.id);
+                const approvedCount = programApps.filter(app => app.status === 'approved').length;
+                const waitingCount = programApps.filter(app => app.status === 'waiting').length;
+                const rejectedCount = programApps.filter(app => app.status === 'rejected').length;
+                
+                programStats[program.name] = {
+                    'Total Applications': programApps.length,
+                    'Approved': approvedCount,
+                    'Waiting Review': waitingCount,
+                    'Rejected': rejectedCount,
+                    'Slots Available': program.totalSlots - approvedCount,
+                    'Slot Usage': `${approvedCount}/${program.totalSlots}`,
+                    'Approval Rate': `${programApps.length > 0 ? Math.round((approvedCount / programApps.length) * 100) : 0}%`
+                };
+            });
+            
+            reportData = programStats;
+            break;
+            
+        case 'documentsReport':
+            reportTitle = 'Documents Report';
+            reportDescription = 'Comprehensive analysis of document verification and rejection statuses';
+            
+            // Load all documents from registered users
+            const users = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+            
+            let totalDocuments = 0;
+            let verifiedDocuments = 0;
+            let pendingDocuments = 0;
+            let rejectedDocuments = 0;
+            let missingDocuments = 0;
+            
+            const documentBreakdown = {
+                'picture': { name: '2x2 ID Picture', verified: 0, pending: 0, rejected: 0, missing: 0 },
+                'birthcert': { name: 'Birth Certificate', verified: 0, pending: 0, rejected: 0, missing: 0 },
+                'reportcard': { name: 'Report Card', verified: 0, pending: 0, rejected: 0, missing: 0 },
+                'goodmoral': { name: 'Good Moral Certificate', verified: 0, pending: 0, rejected: 0, missing: 0 },
+                'tor': { name: 'Transcript of Records', verified: 0, pending: 0, rejected: 0, missing: 0 },
+                'diploma': { name: 'High School Diploma', verified: 0, pending: 0, rejected: 0, missing: 0 }
+            };
+            
+            users.forEach(user => {
+                if (user.applications) {
+                    user.applications.forEach(application => {
+                        // UPDATED: Skip rejected applications for document counting
+                        if (application.status === 'rejected') {
+                            return;
+                        }
+                        
+                        if (application.documents) {
+                            Object.entries(application.documents).forEach(([docType, doc]) => {
+                                totalDocuments++;
+                                
+                                if (doc.uploaded) {
+                                    if (doc.verified) {
+                                        verifiedDocuments++;
+                                        documentBreakdown[docType].verified++;
+                                    } else {
+                                        pendingDocuments++;
+                                        documentBreakdown[docType].pending++;
+                                    }
+                                } else {
+                                    missingDocuments++;
+                                    documentBreakdown[docType].missing++;
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // Add rejected documents from documentRejectionReasons
+            rejectedDocuments = Object.keys(documentRejectionReasons).length;
+            
+            // Update breakdown with rejected documents
+            Object.values(documentRejectionReasons).forEach(rejection => {
+                if (documentBreakdown[rejection.documentId]) {
+                    documentBreakdown[rejection.documentId].rejected++;
+                }
+            });
+            
+            reportData = {
+                'Total Documents Tracked': totalDocuments,
+                'Verified Documents': verifiedDocuments,
+                'Pending Verification': pendingDocuments,
+                'Rejected Documents': rejectedDocuments,
+                'Missing Documents': missingDocuments,
+                'Verification Rate': `${totalDocuments > 0 ? Math.round((verifiedDocuments / totalDocuments) * 100) : 0}%`
+            };
+            
+            // Add document breakdown
+            reportData.documentBreakdown = documentBreakdown;
+            break;
+    }
+    
+    const reportContent = document.getElementById('reportContent');
+    
+    let reportHTML = '';
+    
+    if (reportType === 'programStatistics') {
+        reportHTML = `
+            <div class="report-header">
+                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">${reportTitle}</h4>
+                <p style="color: var(--medium-gray); margin-bottom: 20px;">${reportDescription}</p>
+                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 30px;">
+                    Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+                </p>
+            </div>
+            
+            <div class="report-stats">
+                ${Object.entries(reportData).map(([programName, stats]) => `
+                    <div class="program-report-card">
+                        <div class="program-report-header">
+                            <h5 style="color: var(--primary-blue); margin: 0; font-size: 18px;">${programName}</h5>
+                        </div>
+                        <div class="program-report-content">
+                            ${Object.entries(stats).map(([key, value]) => `
+                                <div class="stat-row">
+                                    <span class="stat-label">${key}:</span>
+                                    <span class="stat-value">${value}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    } else if (reportType === 'documentsReport') {
+        const { documentBreakdown, ...mainStats } = reportData;
+        
+        reportHTML = `
+            <div class="report-header">
+                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">${reportTitle}</h4>
+                <p style="color: var(--medium-gray); margin-bottom: 20px;">${reportDescription}</p>
+                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 30px;">
+                    Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+                </p>
+            </div>
+            
+            <div class="report-stats">
+                ${Object.entries(mainStats).map(([key, value]) => `
+                    <div class="stat-row">
+                        <span class="stat-label">${key}:</span>
+                        <span class="stat-value">${value}</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="document-breakdown">
+                <h5 style="color: var(--primary-blue); margin-top: 30px; margin-bottom: 15px;">Document Type Breakdown</h5>
+                <div class="documents-report-grid">
+                    ${Object.entries(documentBreakdown).map(([docId, docStats]) => `
+                        <div class="document-stat-card">
+                            <div class="document-stat-header">
+                                <div class="document-stat-icon ${
+                                    docStats.verified > 0 ? 'verified' : 
+                                    docStats.pending > 0 ? 'pending' : 
+                                    docStats.rejected > 0 ? 'rejected' : 'uploaded'
+                                }">
+                                    ${docId === 'picture' ? '🖼️' : 
+                                      docId === 'birthcert' ? '📄' : 
+                                      docId === 'reportcard' ? '📊' : 
+                                      docId === 'goodmoral' ? '📜' : 
+                                      docId === 'tor' ? '🎓' : '📜'}
+                                </div>
+                                <div class="document-stat-title">${docStats.name}</div>
+                            </div>
+                            <div class="document-stat-number">${docStats.verified + docStats.pending + docStats.rejected + docStats.missing}</div>
+                            <div class="document-stat-label">Total Documents</div>
+                            <div class="document-breakdown-list">
+                                <div class="document-breakdown-item">
+                                    <span class="document-breakdown-name">Verified:</span>
+                                    <span class="document-breakdown-count" style="color: var(--success);">${docStats.verified}</span>
+                                </div>
+                                <div class="document-breakdown-item">
+                                    <span class="document-breakdown-name">Pending:</span>
+                                    <span class="document-breakdown-count" style="color: var(--warning);">${docStats.pending}</span>
+                                </div>
+                                <div class="document-breakdown-item">
+                                    <span class="document-breakdown-name">Rejected:</span>
+                                    <span class="document-breakdown-count" style="color: var(--danger);">${docStats.rejected}</span>
+                                </div>
+                                <div class="document-breakdown-item">
+                                    <span class="document-breakdown-name">Missing:</span>
+                                    <span class="document-breakdown-count" style="color: var(--medium-gray);">${docStats.missing}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            ${Object.keys(documentRejectionReasons).length > 0 ? `
+            <div class="rejection-summary" style="margin-top: 30px;">
+                <h5 style="color: var(--primary-blue); margin-bottom: 15px;">Rejection Reasons Summary</h5>
+                <div style="background: var(--light-blue); padding: 20px; border-radius: 8px;">
+                    <p><strong>Total Rejections:</strong> ${Object.keys(documentRejectionReasons).length}</p>
+                    <p><strong>Most Common Rejection:</strong> ${getMostCommonRejectionReason()}</p>
+                    <button class="btn-filter" onclick="viewDocumentRejections()" style="margin-top: 10px;">
+                        View All Rejection Details
+                    </button>
+                </div>
+            </div>
+            ` : ''}
+        `;
+    } else {
+        reportHTML = `
+            <div class="report-header">
+                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">${reportTitle}</h4>
+                <p style="color: var(--medium-gray); margin-bottom: 20px;">${reportDescription}</p>
+                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 30px;">
+                    Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
+                </p>
+            </div>
+            
+            <div class="report-stats">
+                ${Object.entries(reportData).map(([key, value]) => `
+                    <div class="stat-row">
+                        <span class="stat-label">${key}:</span>
+                        <span class="stat-value">${value}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    reportHTML += `
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <button class="btn-filter" onclick="printReport()" style="background: var(--primary-blue); margin-right: 10px;">
+                Print Report
+            </button>
+            <button class="btn-filter" onclick="closeModal()">
+                Close
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('reportModalTitle').textContent = reportTitle;
+    reportContent.innerHTML = reportHTML;
+    document.getElementById('reportModal').style.display = 'flex';
+}
+
+function getMostCommonRejectionReason() {
+    if (Object.keys(documentRejectionReasons).length === 0) {
+        return 'No rejections recorded';
+    }
+    
+    const reasons = {};
+    Object.values(documentRejectionReasons).forEach(rejection => {
+        // Extract main reason (first sentence or first 50 chars)
+        let reason = rejection.reason;
+        if (reason.includes('.')) {
+            reason = reason.split('.')[0];
+        }
+        if (reason.length > 50) {
+            reason = reason.substring(0, 50) + '...';
+        }
+        
+        reasons[reason] = (reasons[reason] || 0) + 1;
+    });
+    
+    let mostCommon = '';
+    let maxCount = 0;
+    
+    Object.entries(reasons).forEach(([reason, count]) => {
+        if (count > maxCount) {
+            mostCommon = reason;
+            maxCount = count;
+        }
+    });
+    
+    return `${mostCommon} (${maxCount} times)`;
+}
+
+function printReport() {
+    window.print();
 }
 
 // ===== UTILITY FUNCTIONS =====
@@ -2015,8 +2539,10 @@ function closeModal() {
 }
 
 function logout() {
-    sessionStorage.clear();
-    window.location.href = 'login.html';
+    showConfirm('Confirm Logout', 'Are you sure you want to logout?', function() {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    });
 }
 
 function setupEventListeners() {
@@ -2049,335 +2575,100 @@ function refreshCurrentView() {
     }
 }
 
-// ===== REPORTS FUNCTIONS =====
-function loadReportsSection() {
-    const reportsSection = document.getElementById('reportsSection');
-    if (!reportsSection) return;
-    
-    reportsSection.innerHTML = `
-        <div class="content-header">
-            <h1>Reports & Analytics</h1>
-            <p>View system statistics and generate detailed reports</p>
-        </div>
-        
-        <div class="reports-container">
-            <div class="report-card clickable" onclick="generateReport('applicationStatus')">
-                <div class="report-card-header">
-                    <div class="report-icon">📈</div>
-                    <h3>Application Status Report</h3>
-                </div>
-                <div class="report-card-content">
-                    <p>Breakdown of applications by status with visual charts</p>
-                </div>
-                <div class="report-card-footer">
-                    <span class="report-action">Generate Report →</span>
-                </div>
-            </div>
-            
-            <div class="report-card clickable" onclick="generateReport('examPerformance')">
-                <div class="report-card-header">
-                    <div class="report-icon">💯</div>
-                    <h3>Exam Performance Report</h3>
-                </div>
-                <div class="report-card-content">
-                    <p>Analyze exam scores, pass rates, and performance trends</p>
-                </div>
-                <div class="report-card-footer">
-                    <span class="report-action">Generate Report →</span>
-                </div>
-            </div>
-            
-            <div class="report-card clickable" onclick="generateReport('programStatistics')">
-                <div class="report-card-header">
-                    <div class="report-icon">🎓</div>
-                    <h3>Program Statistics</h3>
-                </div>
-                <div class="report-card-content">
-                    <p>Comprehensive statistics for each training program</p>
-                </div>
-                <div class="report-card-footer">
-                    <span class="report-action">Generate Report →</span>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function generateReport(reportType) {
-    let reportData = {};
-    let reportTitle = '';
-    let reportDescription = '';
-    
-    switch(reportType) {
-        case 'applicationStatus':
-            reportTitle = 'Application Status Report';
-            reportDescription = 'Comprehensive breakdown of all applications by current status';
-            const statusCounts = {
-                'Waiting Review': allApplicants.filter(app => app.status === 'waiting').length,
-                'Approved': allApplicants.filter(app => app.status === 'approved').length,
-                'Rejected': allApplicants.filter(app => app.status === 'rejected').length
-            };
-            reportData = statusCounts;
-            break;
-            
-        case 'examPerformance':
-            reportTitle = 'Exam Performance Report';
-            reportDescription = 'Detailed analysis of exam scores and performance metrics';
-            const userExamData = JSON.parse(localStorage.getItem('userExamData') || '{}');
-            const examTakers = Object.values(userExamData).filter(exam => (exam.taken || exam.completedAt));
-            const passed = examTakers.filter(exam => (exam.score?.percentage >= 75 || exam.score >= 75)).length;
-            const failed = examTakers.length - passed;
-            
-            // Calculate top score
-            let topScore = 0;
-            examTakers.forEach(exam => {
-                let scoreValue;
-                
-                if (exam.score && typeof exam.score === 'object' && 'percentage' in exam.score) {
-                    scoreValue = exam.score.percentage;
-                } else if (exam.score && typeof exam.score === 'number') {
-                    scoreValue = exam.score;
-                } else {
-                    scoreValue = 0;
-                }
-                
-                if (scoreValue !== undefined && scoreValue !== null && !isNaN(scoreValue) && scoreValue > topScore) {
-                    topScore = scoreValue;
-                }
-            });
-            
-            const passRate = examTakers.length > 0 ? Math.round((passed / examTakers.length) * 100) : 0;
-            
-            reportData = {
-                'Total Exams Taken': examTakers.length,
-                'Passed': passed,
-                'Failed': failed,
-                'Pass Rate': `${passRate}%`,
-                'Top Score': `${topScore}%`,
-                'Minimum Passing Score': '75%'
-            };
-            break;
-            
-        case 'programStatistics':
-            reportTitle = 'Program Statistics Report';
-            reportDescription = 'Comprehensive statistics for each training program';
-            const programStats = {};
-            
-            programsData.forEach(program => {
-                const programApps = allApplicants.filter(app => app.program === program.id);
-                const approvedCount = programApps.filter(app => app.status === 'approved').length;
-                const waitingCount = programApps.filter(app => app.status === 'waiting').length;
-                const rejectedCount = programApps.filter(app => app.status === 'rejected').length;
-                
-                programStats[program.name] = {
-                    'Total Applications': programApps.length,
-                    'Approved': approvedCount,
-                    'Waiting Review': waitingCount,
-                    'Rejected': rejectedCount,
-                    'Slots Available': program.totalSlots - approvedCount,
-                    'Slot Usage': `${approvedCount}/${program.totalSlots}`,
-                    'Approval Rate': `${programApps.length > 0 ? Math.round((approvedCount / programApps.length) * 100) : 0}%`
-                };
-            });
-            
-            reportData = programStats;
-            break;
-    }
-    
-    // Create or get the report modal
-    let reportModal = document.getElementById('reportModal');
-    if (!reportModal) {
-        reportModal = document.createElement('div');
-        reportModal.className = 'modal-overlay';
-        reportModal.id = 'reportModal';
-        reportModal.innerHTML = `
-            <div class="modal report-modal">
-                <div class="modal-header">
-                    <h3 id="reportModalTitle"></h3>
-                    <button class="modal-close" onclick="closeModal()">×</button>
-                </div>
-                <div class="modal-body">
-                    <div id="reportContent"></div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(reportModal);
-    }
-    
-    document.getElementById('reportModalTitle').textContent = reportTitle;
-    
-    let reportContent = '';
-    
-    if (reportType === 'programStatistics') {
-        reportContent = `
-            <div class="report-header">
-                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">${reportTitle}</h4>
-                <p style="color: var(--medium-gray); margin-bottom: 20px;">${reportDescription}</p>
-                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 30px;">
-                    Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
-                </p>
-            </div>
-            
-            <div class="report-stats">
-                ${Object.entries(reportData).map(([programName, stats]) => `
-                    <div class="program-report-card">
-                        <div class="program-report-header">
-                            <h5 style="color: var(--primary-blue); margin: 0; font-size: 18px;">${programName}</h5>
-                        </div>
-                        <div class="program-report-content">
-                            ${Object.entries(stats).map(([key, value]) => `
-                                <div class="stat-row">
-                                    <span class="stat-label">${key}:</span>
-                                    <span class="stat-value">${value}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                <button class="btn-filter" onclick="printReport()" style="background: var(--primary-blue); margin-right: 10px;">
-                    Print Report
-                </button>
-                <button class="btn-filter" onclick="closeModal()">
-                    Close
-                </button>
-            </div>
-        `;
-    } else {
-        reportContent = `
-            <div class="report-header">
-                <h4 style="color: var(--primary-blue); margin-bottom: 10px;">${reportTitle}</h4>
-                <p style="color: var(--medium-gray); margin-bottom: 20px;">${reportDescription}</p>
-                <p style="color: var(--medium-gray); font-size: 14px; margin-bottom: 30px;">
-                    Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
-                </p>
-            </div>
-            
-            <div class="report-stats">
-                ${Object.entries(reportData).map(([key, value]) => `
-                    <div class="stat-row">
-                        <span class="stat-label">${key}:</span>
-                        <span class="stat-value">${value}</span>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                <button class="btn-filter" onclick="printReport()" style="background: var(--primary-blue); margin-right: 10px;">
-                    Print Report
-                </button>
-                <button class="btn-filter" onclick="closeModal()">
-                    Close
-                </button>
-            </div>
-        `;
-    }
-    
-    document.getElementById('reportContent').innerHTML = reportContent;
-    reportModal.style.display = 'flex';
-}
-
-function printReport() {
-    window.print();
-}
-
 // ===== DEBUG FUNCTIONS =====
-window.debugAdmin = function() {
-    console.log('=== ADMIN DEBUG INFO ===');
-    console.log('Current admin:', adminData);
-    console.log('All applicants:', allApplicants);
-    console.log('Programs data:', programsData);
-    console.log('User exam data:', JSON.parse(localStorage.getItem('userExamData') || '{}'));
-    console.log('Document rejection reasons:', documentRejectionReasons);
-};
+// window.debugAdmin = function() {
+//     console.log('=== ADMIN DEBUG INFO ===');
+//     console.log('Current admin:', adminData);
+//     console.log('All applicants:', allApplicants);
+//     console.log('Programs data:', programsData);
+//     console.log('User exam data:', JSON.parse(localStorage.getItem('userExamData') || '{}'));
+//     console.log('Document rejection reasons:', documentRejectionReasons);
+// };
 
-window.createTestStudent = function() {
-    const testAccount = {
-        personal: {
-            firstName: "Test",
-            lastName: "Student",
-            email: "test@student.com",
-            phone: "09123456789",
-            birthdate: "2000-01-01",
-            address: "Test Address",
-            gender: "male"
-        },
-        account: {
-            username: "teststudent",
-            password: "test1234",
-            securityQuestion: "What is your favorite color?",
-            securityAnswer: "blue"
-        },
-        applications: [{
-            applicationId: 'TEST-' + Date.now(),
-            program: 'wadt',
-            status: 'waiting',
-            submittedDate: new Date().toISOString(),
-            interviewStatus: 'not-scheduled',
-            documents: {
-                picture: { 
-                    uploaded: true, 
-                    filename: 'id_picture.jpg', 
-                    verified: false, 
-                    type: '2x2 ID Picture',
-                    dataUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2UzZjJmZCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSI0MCIgZmlsbD0iIzQyODVmNCIvPjxyZWN0IHg9IjYwIiB5PSIxMzAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzQyODVmNCIvPjwvc3ZnPg=='
-                },
-                birthcert: { 
-                    uploaded: true, 
-                    filename: 'birth_cert.pdf', 
-                    verified: false, 
-                    type: 'Birth Certificate',
-                    dataUrl: 'data:application/pdf;base64,JVBERi0xLg=='
-                },
-                reportcard: { 
-                    uploaded: true, 
-                    filename: 'report_card.pdf', 
-                    verified: false, 
-                    type: 'Report Card',
-                    dataUrl: 'data:application/pdf;base64,JVBERi0xLg=='
-                },
-                goodmoral: { 
-                    uploaded: false, 
-                    filename: null, 
-                    verified: false, 
-                    type: 'Certificate of Good Moral Character',
-                    dataUrl: null
-                },
-                tor: { 
-                    uploaded: false, 
-                    filename: null, 
-                    verified: false, 
-                    type: 'Transcript of Records (TOR)',
-                    dataUrl: null
-                },
-                diploma: { 
-                    uploaded: false, 
-                    filename: null, 
-                    verified: false, 
-                    type: 'High School Diploma',
-                    dataUrl: null
-                }
-            },
-            exam: { taken: false }
-        }],
-        registrationDate: new Date().toISOString()
-    };
+// window.createTestStudent = function() {
+//     const testAccount = {
+//         personal: {
+//             firstName: "Test",
+//             lastName: "Student",
+//             email: "test@student.com",
+//             phone: "09123456789",
+//             birthdate: "2000-01-01",
+//             address: "Test Address",
+//             gender: "male"
+//         },
+//         account: {
+//             username: "teststudent",
+//             password: "test1234",
+//             securityQuestion: "What is your favorite color?",
+//             securityAnswer: "blue"
+//         },
+//         applications: [{
+//             applicationId: 'TEST-' + Date.now(),
+//             program: 'wadt',
+//             status: 'waiting',
+//             submittedDate: new Date().toISOString(),
+//             interviewStatus: 'not-scheduled',
+//             documents: {
+//                 picture: { 
+//                     uploaded: true, 
+//                     filename: 'id_picture.jpg', 
+//                     verified: false, 
+//                     type: '2x2 ID Picture',
+//                     dataUrl: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2UzZjJmZCIvPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSI0MCIgZmlsbD0iIzQyODVmNCIvPjxyZWN0IHg9IjYwIiB5PSIxMzAiIHdpZHRoPSI4MCIgaGVpZ2h0PSI0MCIgZmlsbD0iIzQyODVmNCIvPjwvc3ZnPg=='
+//                 },
+//                 birthcert: { 
+//                     uploaded: true, 
+//                     filename: 'birth_cert.pdf', 
+//                     verified: false, 
+//                     type: 'Birth Certificate',
+//                     dataUrl: 'data:application/pdf;base64,JVBERi0xLg=='
+//                 },
+//                 reportcard: { 
+//                     uploaded: true, 
+//                     filename: 'report_card.pdf', 
+//                     verified: false, 
+//                     type: 'Report Card',
+//                     dataUrl: 'data:application/pdf;base64,JVBERi0xLg=='
+//                 },
+//                 goodmoral: { 
+//                     uploaded: false, 
+//                     filename: null, 
+//                     verified: false, 
+//                     type: 'Certificate of Good Moral Character',
+//                     dataUrl: null
+//                 },
+//                 tor: { 
+//                     uploaded: false, 
+//                     filename: null, 
+//                     verified: false, 
+//                     type: 'Transcript of Records (TOR)',
+//                     dataUrl: null
+//                 },
+//                 diploma: { 
+//                     uploaded: false, 
+//                     filename: null, 
+//                     verified: false, 
+//                     type: 'High School Diploma',
+//                     dataUrl: null
+//                 }
+//             },
+//             exam: { taken: false }
+//         }],
+//         registrationDate: new Date().toISOString()
+//     };
     
-    const existingUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-    existingUsers.push(testAccount);
-    localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
+//     const existingUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
+//     existingUsers.push(testAccount);
+//     localStorage.setItem('registeredUsers', JSON.stringify(existingUsers));
     
-    loadAllApplicants();
-    updateDashboard();
-    alert('✅ Test student created!');
-};
+//     loadAllApplicants();
+//     updateDashboard();
+//     showAlert('Success', '✅ Test student created!', '✅');
+// };
 
-// NEW: View all document rejections including application rejections
 window.viewDocumentRejections = function() {
     if (Object.keys(documentRejectionReasons).length === 0) {
-        alert('No document rejections found!');
+        showAlert('No Data', 'No document rejections found!', '📄');
         return;
     }
     
@@ -2447,7 +2738,6 @@ window.viewDocumentRejections = function() {
     archiveModal.style.display = 'flex';
 };
 
-// NEW: Function to close archive modal
 function closeArchiveModal() {
     const archiveModal = document.getElementById('archiveModal');
     if (archiveModal) {

@@ -254,7 +254,64 @@
 
             <!-- Reports & Analytics -->
             <div id="reportsSection" class="content-section" style="display: none;">
-                <!-- Reports content will be loaded dynamically -->
+                <div class="content-header">
+                    <h1>Reports & Analytics</h1>
+                    <p>View system statistics and generate detailed reports</p>
+                </div>
+                
+                <div class="reports-container">
+                    <div class="report-card clickable" onclick="generateReport('applicationStatus')">
+                        <div class="report-card-header">
+                            <div class="report-icon">📈</div>
+                            <h3>Application Status Report</h3>
+                        </div>
+                        <div class="report-card-content">
+                            <p>Breakdown of applications by status with visual charts</p>
+                        </div>
+                        <div class="report-card-footer">
+                            <span class="report-action">Generate Report →</span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-card clickable" onclick="generateReport('examPerformance')">
+                        <div class="report-card-header">
+                            <div class="report-icon">💯</div>
+                            <h3>Exam Performance Report</h3>
+                        </div>
+                        <div class="report-card-content">
+                            <p>Analyze exam scores, pass rates, and performance trends</p>
+                        </div>
+                        <div class="report-card-footer">
+                            <span class="report-action">Generate Report →</span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-card clickable" onclick="generateReport('programStatistics')">
+                        <div class="report-card-header">
+                            <div class="report-icon">🎓</div>
+                            <h3>Program Statistics</h3>
+                        </div>
+                        <div class="report-card-content">
+                            <p>Comprehensive statistics for each training program</p>
+                        </div>
+                        <div class="report-card-footer">
+                            <span class="report-action">Generate Report →</span>
+                        </div>
+                    </div>
+                    
+                    <div class="report-card clickable" onclick="generateReport('documentsReport')">
+                        <div class="report-card-header">
+                            <div class="report-icon">📄</div>
+                            <h3>Documents Report</h3>
+                        </div>
+                        <div class="report-card-content">
+                            <p>View document verification, rejection, and pending statuses</p>
+                        </div>
+                        <div class="report-card-footer">
+                            <span class="report-action">Generate Report →</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -289,7 +346,7 @@
         </div>
     </div>
 
-    <!-- Interview Schedule Modal - UPDATED: Removed interview status dropdown -->
+    <!-- Interview Schedule Modal -->
     <div class="modal-overlay" id="interviewModal">
         <div class="modal">
             <div class="modal-header">
@@ -370,58 +427,70 @@
     </div>
 
     <!-- Alert Modal -->
-<div class="modal-overlay alert-modal" id="alertModal" style="display: none;">
-    <div class="modal">
-        <div class="modal-body">
-            <div class="alert-modal-content">
-                <div class="alert-icon" id="alertIcon"></div>
-                <h3 class="alert-title" id="alertTitle"></h3>
-                <p class="alert-message" id="alertMessage"></p>
-                <div class="alert-buttons">
-                    <button class="btn-alert btn-alert-primary" id="alertOkBtn">OK</button>
-                    <button class="btn-alert btn-alert-secondary" id="alertCancelBtn" style="display: none;">Cancel</button>
+    <div class="modal-overlay alert-modal" id="alertModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-body">
+                <div class="alert-modal-content">
+                    <div class="alert-icon" id="alertIcon"></div>
+                    <h3 class="alert-title" id="alertTitle"></h3>
+                    <p class="alert-message" id="alertMessage"></p>
+                    <div class="alert-buttons">
+                        <button class="btn-alert btn-alert-primary" id="alertOkBtn">OK</button>
+                        <button class="btn-alert btn-alert-secondary" id="alertCancelBtn" style="display: none;">Cancel</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Confirmation Modal -->
-<div class="modal-overlay confirm-modal" id="confirmModal" style="display: none;">
-    <div class="modal">
-        <div class="modal-header">
-            <h3 id="confirmTitle"></h3>
-            <button class="modal-close" onclick="closeConfirmModal()">×</button>
-        </div>
-        <div class="modal-body">
-            <p id="confirmMessage"></p>
-            <div class="confirm-buttons">
-                <button class="btn-confirm btn-confirm-yes" id="confirmYesBtn">Yes</button>
-                <button class="btn-confirm btn-confirm-no" id="confirmNoBtn">No</button>
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay confirm-modal" id="confirmModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="confirmTitle"></h3>
+                <button class="modal-close" onclick="closeConfirmModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+                <div class="confirm-buttons">
+                    <button class="btn-confirm btn-confirm-yes" id="confirmYesBtn">Yes</button>
+                    <button class="btn-confirm btn-confirm-no" id="confirmNoBtn">No</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Rejection Reason Modal -->
-<div class="modal-overlay rejection-modal" id="rejectionModal" style="display: none;">
-    <div class="modal">
-        <div class="modal-header">
-            <h3 id="rejectionTitle"></h3>
-            <button class="modal-close" onclick="closeRejectionModal()">×</button>
-        </div>
-        <div class="modal-body">
-            <p id="rejectionInstruction"></p>
-            <textarea class="rejection-textarea" id="rejectionReason" placeholder="Enter rejection reason here..."></textarea>
-            <div class="alert-buttons" style="margin-top: 20px;">
-                <button class="btn-alert btn-alert-primary" id="rejectionSubmitBtn">Submit</button>
-                <button class="btn-alert btn-alert-secondary" onclick="closeRejectionModal()">Cancel</button>
+    <!-- Rejection Reason Modal -->
+    <div class="modal-overlay rejection-modal" id="rejectionModal" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="rejectionTitle"></h3>
+                <button class="modal-close" onclick="closeRejectionModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p id="rejectionInstruction"></p>
+                <textarea class="rejection-textarea" id="rejectionReason" placeholder="Enter rejection reason here..."></textarea>
+                <div class="alert-buttons" style="margin-top: 20px;">
+                    <button class="btn-alert btn-alert-primary" id="rejectionSubmitBtn">Submit</button>
+                    <button class="btn-alert btn-alert-secondary" onclick="closeRejectionModal()">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-    <!-- Report Modal (Dynamically created) -->
+    <!-- Report Modal -->
+    <div class="modal-overlay" id="reportModal" style="display: none;">
+        <div class="modal report-modal">
+            <div class="modal-header">
+                <h3 id="reportModalTitle"></h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="reportContent"></div>
+            </div>
+        </div>
+    </div>
+
     <script src="../js/admin-dashboard.js"></script>
 </body>
 </html>
